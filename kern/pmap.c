@@ -28,7 +28,7 @@ void mips_detect_memory(u_int _memsize) {
 	/* Step 2: Calculate the corresponding 'npage' value. */
 	/* Exercise 2.1: Your code here. */
 	npage = memsize / PAGE_SIZE;
-	printk("Memory size: %lu KiB, number of pages: %lu\n", memsize / 1024, npage);
+	//printk("Memory size: %lu KiB, number of pages: %lu\n", memsize / 1024, npage);
 }
 
 /* Lab 2 Key Code "alloc" */
@@ -80,8 +80,8 @@ void mips_vm_init() {
 	 * physical address `pages` allocated before. For consideration of alignment,
 	 * you should round up the memory size before map. */
 	pages = (struct Page *)alloc(npage * sizeof(struct Page), PAGE_SIZE, 1);
-	printk("to memory %x for struct Pages.\n", freemem);
-	printk("pmap.c:\t mips vm init success\n");
+	//printk("to memory %x for struct Pages.\n", freemem);
+	//printk("pmap.c:\t mips vm init success\n");
 }
 
 /* Overview:
