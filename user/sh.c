@@ -29,6 +29,19 @@ int _gettoken(char *s, char **p1, char **p2) {
 	while (strchr(WHITESPACE, *s)) {
 		*s++ = 0;
 	}
+
+	/*Shell Challenge : "content"*/
+	if (*s == '"') { // read until the next '"'
+		*s++;
+		*p1 = s;
+		while (*s && *s != '"') {
+			s++;
+		}
+		*(s++) = 0; // *s = '"'
+		*p2 = s;
+		return 'w';
+	}
+
 	if (*s == 0) {
 		return 0;
 	}
@@ -164,7 +177,15 @@ int parsecmd(char **argv, int *rightpipe) {
 				wait(child); 
 				return parsecmd(argv, rightpipe);
 			}
-			break;		
+			break;
+		case '&':;
+			int child1 = fork();
+			if (child1 == 0) { // child shell
+				return argc;
+			} else { // parent shell
+				return parsecmd(argv, rightpipe);
+			}		
+			break;	
 		}
 	}
 

@@ -77,9 +77,34 @@ int spawn(char *prog, char **argv) {
 
 ## 九.实现引号支持
 
-
+​	```shell```在解析时需要将双引号内的内容看作是单个字符串，在解析字符串时加了一种```token```为字符串，修改```_gettoken```中的逻辑。
 
 ## 十.实现前后台任务管理
+
+### 10.1 实现后台任务并行
+
+​	此功能的实现与实现一行多指令类似，后台运行任务即在```fork```之后父进程不会等待子进程运行完成。
+
+```c
+		case '&':;
+			int child = fork();
+			if (child == 0) { // child shell
+				return argc;
+			} else { // parent shell
+				return parsecmd(argv, rightpipe);
+			}		
+			break;	
+```
+
+### 10.2 实现jobs指令
+
+
+
+### 10.3 实现fg指令
+
+
+
+### 10.4 kill指令
 
 
 
