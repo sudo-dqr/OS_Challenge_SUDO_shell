@@ -34,6 +34,7 @@ ifeq ($(call lab-ge,6), true)
 			ls.b \
 			sh.b  \
 			cat.b \
+			touch.b \
 			sleep.b \
 			true.b \
 			false.b \

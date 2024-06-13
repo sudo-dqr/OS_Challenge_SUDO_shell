@@ -41,6 +41,58 @@ int spawn(char *prog, char **argv) {
 
 ## 三.实现更多指令
 
+> 以下三条指令涉及到与文件系统进程进行通信，添加过程较为类似
+
+### 3.1 ```mkdir```
+
+* ```mkdir <dir>```
+* ```mkdir -p <dir>```
+* 
+
+### 3.2 ```touch```
+
+* ```touch <file>```
+
+​	新建```touch.c```并在```include.mk```中加入```touch.b```，**检查文件是否存在的方式为先尝试打开，若不能成功打开则进行创建。**
+
+```c
+// touch.c
+#include<lib.h>
+
+void touch(char *path) {
+    int fd = open(path, O_RDONLY);
+    // 首先检查文件是否存在
+    if (fd > 0) {
+        close(fd);
+        return;
+    } else {
+        // 文件不存在，创建文件
+        fd = open(path, O_CREAT);
+        if (fd < 0) {
+            printf("touch: cannot touch '%s': No such file or directory\n", path);
+            return;
+        }
+        close(fd);
+    
+    }
+}
+
+int main(int argc, char **argv) {
+    int i;
+    if (argc < 2) {
+        printf("touch: missing file operand\n");
+        return 0;
+    }
+    for (i = 1; i < argc; i++) {
+        touch(argv[i]);
+    }
+}
+```
+
+
+
+### 3.3 ```rm```
+
 
 
 ## 四.实现反引号
@@ -79,6 +131,20 @@ int spawn(char *prog, char **argv) {
 
 ​	```shell```在解析时需要将双引号内的内容看作是单个字符串，在解析字符串时加了一种```token```为字符串，修改```_gettoken```中的逻辑。
 
+```c
+	/*Shell Challenge : "content"*/
+	if (*s == '"') { // read until the next '"'
+		*s++;
+		*p1 = s;
+		while (*s && *s != '"') {
+			s++;
+		}
+		*(s++) = 0; // *s = '"'
+		*p2 = s;
+		return 'w';
+	}
+```
+
 ## 十.实现前后台任务管理
 
 ### 10.1 实现后台任务并行
@@ -96,15 +162,15 @@ int spawn(char *prog, char **argv) {
 			break;	
 ```
 
-### 10.2 实现jobs指令
+### 10.2 实现```jobs```指令
 
 
 
-### 10.3 实现fg指令
+### 10.3 实现```fg```指令
 
 
 
-### 10.4 kill指令
+### 10.4 ```kill```指令
 
 
 
