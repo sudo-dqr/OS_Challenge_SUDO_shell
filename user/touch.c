@@ -24,9 +24,7 @@ int main(int argc, char **argv) {
         printf("touch: missing file operand\n");
         return 0;
     }
-    for (i = 1; i < argc; i++) {
-        touch(argv[i]);
-    }
+    touch(argv[1]);
 }
 
 

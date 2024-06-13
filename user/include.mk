@@ -35,6 +35,7 @@ ifeq ($(call lab-ge,6), true)
 			sh.b  \
 			cat.b \
 			touch.b \
+			mkdir.b \
 			sleep.b \
 			true.b \
 			false.b \
