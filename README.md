@@ -43,13 +43,7 @@ int spawn(char *prog, char **argv) {
 
 > 以下三条指令涉及到与文件系统进程进行通信，添加过程较为类似
 
-### 3.1 ```mkdir```
-
-* ```mkdir <dir>```
-* ```mkdir -p <dir>```
-* 
-
-### 3.2 ```touch```
+### 3.1 ```touch```
 
 * ```touch <file>```
 
@@ -89,7 +83,14 @@ int main(int argc, char **argv) {
 }
 ```
 
+### 3.2 ```mkdir```
 
+* ```mkdir <dir>```
+* ```mkdir -p <dir>```
+
+​	```mkdir```的实现方式与```touch```类似，在```open```时传入```O_MKDIR```，需要注意的是要在文件系统服务函数```serv.c```中打开函数时相应加入对于```O_MKDIR```的判断。
+
+### 
 
 ### 3.3 ```rm```
 
