@@ -156,6 +156,15 @@ int parsecmd(char **argv, int *rightpipe) {
 				return argc;
 			}
 			break;
+		case ';':;
+			int child = fork();
+			if (child == 0) { // child shell
+				return argc;
+			} else { // parent shell
+				wait(child); 
+				return parsecmd(argv, rightpipe);
+			}
+			break;		
 		}
 	}
 
