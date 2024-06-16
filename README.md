@@ -185,7 +185,21 @@ int main(int argc, char **argvs) {
 
 ## 五.实现注释功能
 
+​	使用```#```实现注释功能也就是对```#```后面的内容进行忽略，可以在进行执行指令时对字符串```#```后面的部分进行截断。
 
+```c
+//sh.c
+void runcmd(char *s) {
+	/*Shell Challenge: #*/
+	char *p = s;
+	while (*p && *p != '#') {
+		p++;
+	}
+	*p = 0;
+	gettoken(s, 0);
+    //...
+}
+```
 
 ## 六.实现历史指令
 
