@@ -16,6 +16,7 @@ ifeq ($(call lab-ge,5), true)
 			pageref.o \
 			file.o \
 			fsipc.o \
+			history.o \
 			console.o \
 			fprintf.o
 
@@ -37,6 +38,7 @@ ifeq ($(call lab-ge,6), true)
 			touch.b \
 			mkdir.b \
 			rm.b \
+			history.b \
 			sleep.b \
 			true.b \
 			false.b \

@@ -294,6 +294,7 @@ int main(int argc, char **argv) {
 		}
 		user_assert(r == 0);
 	}
+	init_history(); // 初始化 .mosh_history文件
 	for (;;) {
 		if (interactive) {
 			printf("\n$ ");
