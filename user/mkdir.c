@@ -16,17 +16,19 @@ void mkdir(char *path, int flag) {
                 return;
             } else { // 递归创建目录,例如 "/nonexist/dqr/123"
                 char *p = path;
-                while (*p == '/') {
+                if (*p == '/') { // 跳过开头的'/'
                     p++;
                 }
-                while (*p != '\0') {
-                    while (*p != '/' && *p != '\0') {
-                        p++;
+                while (1) {
+                    if (*p == '/') {
+                        *p = '\0';
+                        mkdir(path, 1);
+                        *p = '/';
+                    } else if (*p == '\0') {
+                        mkdir(path, 1);
+                        break;
                     }
-                    char tmp = *p;
-                    *p = '\0';
-                    mkdir(path, 1);
-                    *p = tmp;
+                    p++;
                 }
             }
         }
