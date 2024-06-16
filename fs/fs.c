@@ -658,7 +658,7 @@ int file_open(char *path, struct File **file) {
 // Post-Condition:
 //  On success set *file to point at the file and return 0.
 //  On error return < 0.
-int file_create(char *path, struct File **file) {
+int file_create(u_int req_mode, char *path, struct File **file) {
 	char name[MAXNAMELEN];
 	int r;
 	struct File *dir, *f;
@@ -673,6 +673,13 @@ int file_create(char *path, struct File **file) {
 
 	if (dir_alloc_file(dir, &f) < 0) {
 		return r;
+	}
+
+	/*Shell Challenge*/
+	if (req_mode == O_MKDIR) {
+		f->f_type = FTYPE_DIR;
+	} else {
+		f->f_type = FTYPE_REG;
 	}
 
 	strcpy(f->f_name, name);

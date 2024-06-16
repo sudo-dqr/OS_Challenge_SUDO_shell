@@ -45,7 +45,7 @@ int spawn(char *prog, char **argv) {
 
 ### 3.1 ```touch```
 
-* ```touch <file>```
+* ```touch <file>```：不会出现创建多个文件的情况
 
 ​	新建```touch.c```并在```include.mk```中加入```touch.b```，**检查文件是否存在的方式为先尝试打开，若不能成功打开则进行创建。**
 
@@ -77,9 +77,7 @@ int main(int argc, char **argv) {
         printf("touch: missing file operand\n");
         return 0;
     }
-    for (i = 1; i < argc; i++) {
-        touch(argv[i]);
-    }
+    touch(argv[1]);
 }
 ```
 
@@ -90,7 +88,36 @@ int main(int argc, char **argv) {
 
 ​	```mkdir```的实现方式与```touch```类似，在```open```时传入```O_MKDIR```，需要注意的是要在文件系统服务函数```serv.c```中打开函数时相应加入对于```O_MKDIR```的判断。
 
-### 
+```c
+ void serve_open(u_int envid, struct Fsreq_open *rq) {
+	//...
+	if ((rq->req_omode & O_CREAT) && (r = file_create(rq->req_omode, rq->req_path, &f)) < 0 &&
+	    r != -E_FILE_EXISTS) {
+		ipc_send(envid, r, 0, 0);
+		return;
+	} else if ((rq->req_omode & O_MKDIR) && (r = file_create(rq->req_omode, rq->req_path, &f)) < 0 &&
+	    r != -E_FILE_EXISTS) {
+		ipc_send(envid, r, 0, 0);
+		return;
+	}
+     //...
+}
+```
+
+​	同时应当修改```file_create```函数，增加传入参数```rq->req_mode```，区分创建文件还是目录，为结构体的```type```字段赋值。
+
+```c
+int file_create(u_int req_mode, char *path, struct File **file) {
+    //...
+	/*Shell Challenge*/
+	if (req_mode == O_MKDIR) {
+		f->f_type = FTYPE_DIR;
+	} else {
+		f->f_type = FTYPE_REG;
+	}
+	//...
+}
+```
 
 ### 3.3 ```rm```
 

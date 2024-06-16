@@ -151,31 +151,21 @@ void serve_open(u_int envid, struct Fsreq_open *rq) {
 		ipc_send(envid, r, 0, 0);
 		return;
 	}
-	/*
-	if ((rq->req_omode & O_CREAT) && (r = file_create(rq->req_path, &f)) < 0 &&
+
+	if ((rq->req_omode & O_CREAT) && (r = file_create(rq->req_omode, rq->req_path, &f)) < 0 &&
+	    r != -E_FILE_EXISTS) {
+		ipc_send(envid, r, 0, 0);
+		return;
+	} else if ((rq->req_omode & O_MKDIR) && (r = file_create(rq->req_omode, rq->req_path, &f)) < 0 &&
 	    r != -E_FILE_EXISTS) {
 		ipc_send(envid, r, 0, 0);
 		return;
 	}
 
-	// Open the file.
+	// Open the file. 
 	if ((r = file_open(rq->req_path, &f)) < 0) {
 		ipc_send(envid, r, 0, 0);
 		return;
-	}
-	*/
-
-	if ((r = file_open(rq->req_path, &f)) < 0) {
-		if (rq->req_omode & O_CREAT) {
-			r = file_create(rq->req_path, &f);
-		} else if (rq->req_omode & O_MKDIR) {
-			r = file_create(rq->req_path, &f);
-			f->f_type = FTYPE_DIR;
-		}
-		if (r < 0) {
-			ipc_send(envid, r, 0, 0);
-			return;
-		}
 	}
 
 	// Save the file pointer.
