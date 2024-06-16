@@ -193,6 +193,12 @@ int parsecmd(char **argv, int *rightpipe) {
 }
 
 void runcmd(char *s) {
+	/*Shell Challenge: #*/
+	char *p = s;
+	while (*p && *p != '#') {
+		p++;
+	}
+	*p = 0;
 	gettoken(s, 0);
 
 	char *argv[MAXARGS];
