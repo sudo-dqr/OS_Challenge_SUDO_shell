@@ -19,7 +19,6 @@ void touch(char *path) {
 }
 
 int main(int argc, char **argv) {
-    int i;
     if (argc < 2) {
         printf("touch: missing file operand\n");
         return 0;

@@ -246,9 +246,11 @@ int ftruncate(int fdnum, u_int size) {
 //  Delete a file or directory.
 int remove(const char *path) {
 	// Call fsipc_remove.
-
+	// 最后一位为模式
+	int len = strlen(path);
+	int type = path[++len] - '0';
 	/* Exercise 5.13: Your code here. */
-	return fsipc_remove(path);
+	return fsipc_remove(path, type);
 }
 
 // Overview:

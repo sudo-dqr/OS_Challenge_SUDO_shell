@@ -43,6 +43,7 @@ struct Fsreq_dirty {
 
 struct Fsreq_remove {
 	char req_path[MAXPATHLEN];
+	u_int remove_type;
 };
 
 #endif

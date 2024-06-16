@@ -177,11 +177,125 @@ int main(int argc, char **argvs) {
 
 ### 3.3 ```rm```
 
+* ```rm <file>```
+* ```rm <dir>```
+* ```rm -r <dir>|<file>```
+* ```rm -rf <dir>|<file>```
 
+​	对于```rm```指令处理的关键在于对于参数的处理，我们知道删除目录时需要```-r/-rf```参数，所以需要特殊判断无参数删除目录文件的情况。我采用的方法是在文件系统删除请求结构体中加入一个模式字段，用来表示参数情况(```无参数为0，-r为1，-rf为2```)。
+
+```c
+struct Fsreq_remove {
+	char req_path[MAXPATHLEN];
+	u_int remove_type;
+};
+```
+
+​	对于这个参数的传递，我选择了一种不太“优雅“的方式，由于不能修改```remove```函数的传参(remove函数在test中有引用，评测时替换为标准文件，若修改会导致编译不过)，**我选择将模式数字拼接在路径字符串的\0之后，这样我们既可以读取模式数字，又可以保证读取路径的正确性。**
+
+​	在```remove```函数中将这个数字取出，沿着调用链进行传递。
+
+```c
+int remove(const char *path) {
+	// Call fsipc_remove.
+	// 最后一位为模式
+	int len = strlen(path);
+	int type = path[++len] - '0';
+	/* Exercise 5.13: Your code here. */
+	return fsipc_remove(path, type);
+}
+```
+
+​	在```fsipc_remove```中构建请求结构体时对新增字段赋值，达到通过结构体传参的目的。
+
+```c
+int fsipc_remove(const char *path, u_int type) {
+	//...
+	req->remove_type = type;
+	//...
+}
+```
+
+​	在文件系统服务函数中，为```file_remove```新增模式参数
+
+```c
+void serve_remove(u_int envid, struct Fsreq_remove *rq) {
+	r = file_remove(rq->req_path, rq->remove_type);
+	ipc_send(envid, r, 0, 0);
+}
+```
+
+​	修改具体的文件删除逻辑，当要删除的文件为目录但传递的参数为N(0)时，返回一种新的错误码(```E_IS_DIR=14,新增定义在error.h中```)
+
+```c
+int file_remove(char *path, u_int type) {
+	int r;
+	struct File *f;
+
+	// Step 1: find the file on the disk.
+	if ((r = walk_path(path, 0, &f, 0)) < 0) {
+		return r;
+	}
+
+	/*Shell Challenge*/
+	if (f->f_type == FTYPE_DIR && type == 0) {
+		return -E_IS_DIR;
+	}
+    //...
+}
+```
+
+​	具体的```remove```逻辑：这里返回小于0值说明一定是N模式下删除了目录。
+
+```c
+#include <lib.h>
+
+#define N 0
+#define R 1
+#define RF 2
+
+void rm(char *path, int flag) {
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) {
+        if (flag != RF) {
+            printf("rm: cannot remove '%s': No such file or directory\n", path);
+        }
+    } else {
+        close(fd);
+        /*为了避免传参问题 将模式拼接在路径末尾\0之后*/
+        char path1[MAXPATHLEN+1];
+        strcpy(path1, path);
+        int len = strlen(path1);
+        path1[++len] = flag + '0';
+        /********************/
+        fd = remove(path1);
+        if (fd < 0) {
+            printf("rm: cannot remove '%s': Is a directory\n", path);
+        }
+    }
+}
+
+int main(int argc, char **argv) {
+    if (argc < 2) {
+        printf("rm: missing operand\n");
+    }
+    if (strcmp(argv[1], "-r") == 0) {
+        rm(argv[2], R);
+    } else if (strcmp(argv[1], "-rf") == 0) {
+        rm(argv[2], RF);
+    } else {
+        rm(argv[1], N);
+    }
+    return 0;
+}
+
+```
 
 ## 四.实现反引号
 
-​	使用反引号实现指令替换，只需要考虑```echo```进行的输出，需要将反引号内指令执行的所有标准输出替换为```echo```的参数
+​	使用反引号实现指令替换，只需要考虑```echo```进行的输出，需要将反引号内指令执行的所有标准输出替换为```echo```的参数。
+
+
 
 ## 五.实现注释功能
 
