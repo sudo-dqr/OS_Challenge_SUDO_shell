@@ -46,9 +46,18 @@ int _gettoken(char *s, char **p1, char **p2) {
 		return 0;
 	}
 
-	if (strchr(SYMBOLS, *s)) {
+	if (strchr(SYMBOLS, *s)) { // 修改此处逻辑 识别 && || ;
 		int t = *s;
 		*p1 = s;
+		/*Shell Challenge*/
+		char *s1 = s + 1;
+		if (*s1 == *s && *s1 == '&') {
+			s++;
+			t = 'a';
+		} else if (*s1 == *s && *s1 == '|') {
+			s++;
+			t = 'o';
+		}
 		*s++ = 0;
 		*p2 = s;
 		return t;
@@ -186,6 +195,23 @@ int parsecmd(char **argv, int *rightpipe) {
 				return parsecmd(argv, rightpipe);
 			}		
 			break;	
+		case 'a':; // && 
+			// 若当前指令执行成功则执行下一条指令，若当前指令执行失败则不执行下一条指令
+			int child2 = fork();
+			if (child2 == 0) { // child shell
+				spawn
+				return argc;
+			} else { // parent shell
+				wait(child2);
+				// 检查左侧指令的返回值
+				printf("dqr: %d\n", dqr);
+			}
+			break;
+		case 'o':; // ||
+			// 若当前指令执行失败则执行下一条指令，若当前指令执行成功则不执行下一条指令
+			int child3 = fork();
+
+			break;
 		}
 	}
 
