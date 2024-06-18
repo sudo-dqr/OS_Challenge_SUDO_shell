@@ -89,7 +89,7 @@ int gettoken(char *s, char **p1) {
 
 #define MAXARGS 128
 
-int parsecmd(char **argv, int *rightpipe) {
+int parsecmd(char **argv, int *rightpipe, int mark) {
 	int argc = 0;
 	while (1) {
 		char *t;
@@ -98,7 +98,11 @@ int parsecmd(char **argv, int *rightpipe) {
 		flag = 0;
 		switch (c) {
 		case 0:
-			return argc;
+			if (mark) {
+				return argc;
+			} else {
+				return 0;
+			}
 		case 'w':
 			if (argc >= MAXARGS) {
 				debugf("too many arguments\n");
@@ -173,7 +177,7 @@ int parsecmd(char **argv, int *rightpipe) {
 				dup(p[0], 0);
 				close(p[0]);
 				close(p[1]);
-				return parsecmd(argv, rightpipe);
+				return parsecmd(argv, rightpipe, 1);
 			} else {
 				dup(p[1], 1);
 				close(p[1]);
@@ -187,7 +191,7 @@ int parsecmd(char **argv, int *rightpipe) {
 				return argc;
 			} else { // parent shell
 				wait(child); 
-				return parsecmd(argv, rightpipe);
+				return parsecmd(argv, rightpipe, 1);
 			}
 			break;
 		case '&':;
@@ -195,20 +199,24 @@ int parsecmd(char **argv, int *rightpipe) {
 			if (child1 == 0) { // child shell
 				return argc;
 			} else { // parent shell
-				return parsecmd(argv, rightpipe);
+				return parsecmd(argv, rightpipe, 1);
 			}		
 			break;	
 		case 'a':; // &&
 			flag = 1;
 			int child2 = fork();
 			if (child2 == 0) { // child shell
-				return argc;
+				if (mark) {
+					return argc;
+				} else {
+					return 0;
+				}
 			} else { // parent shell
 				syscall_ipc_recv(0);
 				if (env->env_ipc_value == 0) {
-					return parsecmd(argv, rightpipe);
+					return parsecmd(argv, rightpipe, 1);
 				} else {
-					return 0; // break from runcmd
+					return parsecmd(argv, rightpipe, 0);
 				}
 			}
 			break;
@@ -216,13 +224,17 @@ int parsecmd(char **argv, int *rightpipe) {
 			flag = 1;
 			int child3 = fork();
 			if (child3 == 0) {
-				return argc;
+				if (mark) {
+					return argc;
+				} else {
+					return 0;
+				}
 			} else {
 				syscall_ipc_recv(0);
 				if (env->env_ipc_value != 0) {
-					return parsecmd(argv, rightpipe);
+					return parsecmd(argv, rightpipe, 1);
 				} else {
-					return 0;
+					return parsecmd(argv, rightpipe, 0);
 				}
 			}
 			break;
@@ -243,8 +255,11 @@ void runcmd(char *s) {
 
 	char *argv[MAXARGS];
 	int rightpipe = 0; // rightpipe is the envid of the right side of a pipe | 
-	int argc = parsecmd(argv, &rightpipe);
+	int argc = parsecmd(argv, &rightpipe, 1);
 	if (argc == 0) {
+		if (strlen(argv[0]) > 0) { // 后边还有指令
+			syscall_ipc_try_send(env->env_parent_id, 0, 0, 0);
+		}
 		return;
 	}
 	argv[argc] = 0;
