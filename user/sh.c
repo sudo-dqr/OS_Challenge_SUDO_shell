@@ -299,16 +299,14 @@ void usage(void) {
 	exit();
 }
 
-#define MOS_SUDO_SHELL "Shell Challenge for 2024 Spring Operating System: sudo shell\n"
 
 int main(int argc, char **argv) {
 	int r;
 	int interactive = iscons(0);
 	int echocmds = 0;
-	printf(MOS_SUDO_SHELL);
 	printf("\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	printf("::                                                         ::\n");
-	printf("::                     MOS_SUDO_SHELL                      ::\n");
+	printf("::                     MOS Shell 2024                      ::\n");
 	printf("::                                                         ::\n");
 	printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
 	ARGBEGIN {
