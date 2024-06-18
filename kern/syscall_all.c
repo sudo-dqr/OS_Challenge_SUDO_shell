@@ -392,11 +392,11 @@ int sys_ipc_try_send(u_int envid, u_int value, u_int srcva, u_int perm) {
 	/* Step 3: Check if the target is waiting for a message. */
 	/* Exercise 4.8: Your code here. (6/8) */
 	if (e->env_ipc_recving != 1) {
+		printk("WAHT THE HELL !!!! \n");
 		return -E_IPC_NOT_RECV;
 	}
 	/* Step 4: Set the target's ipc fields. */
 	e->env_ipc_value = value;
-	e->return_value = value;
 	e->env_ipc_from = curenv->env_id;
 	e->env_ipc_perm = PTE_V | perm;
 	e->env_ipc_recving = 0;

@@ -4,6 +4,8 @@
 #define WHITESPACE " \t\r\n"
 #define SYMBOLS "<|>&;()"
 
+int flag = 0;
+
 /* Overview:
  *   Parse the next token from the string at s.
  *
@@ -93,6 +95,7 @@ int parsecmd(char **argv, int *rightpipe) {
 		char *t;
 		int fd, r;
 		int c = gettoken(0, &t);
+		flag = 0;
 		switch (c) {
 		case 0:
 			return argc;
@@ -196,13 +199,14 @@ int parsecmd(char **argv, int *rightpipe) {
 			}		
 			break;	
 		case 'a':; // &&
+			flag = 1;
 			int child2 = fork();
 			if (child2 == 0) { // child shell
 				return argc;
 			} else { // parent shell
+				syscall_ipc_recv(0);
 				wait(child2);
-				struct Env child_env = envs[ENVX(child2)];
-				if (child_env.return_value == 0) {
+				if (env->env_ipc_value == 0) {
 					return parsecmd(argv, rightpipe);
 				} else {
 					return 0; // break from runcmd
@@ -210,16 +214,17 @@ int parsecmd(char **argv, int *rightpipe) {
 			}
 			break;
 		case 'o':; // ||
+			flag = 1;
 			int child3 = fork();
 			if (child3 == 0) {
 				return argc;
 			} else {
+				syscall_ipc_recv(0);
 				wait(child3);
-				struct Env child_env = envs[ENVX(child3)];
-				if (child_env.return_value != 0) {
+				if (env->env_ipc_value != 0) {
 					return parsecmd(argv, rightpipe);
 				} else {
-					return 0; // break from runcmd
+					return 0;
 				}
 			}
 			break;
@@ -250,8 +255,12 @@ void runcmd(char *s) {
 	// if fails, child is the error code. 
 	close_all(); // close all file descriptors
 	if (child >= 0) {
-		//syscall_ipc_recv(0); 
+		syscall_ipc_recv(0);
 		wait(child); // wait(envid);
+		printf("child %d exited with status %d\n", child, env->env_ipc_value);
+		if (flag == 1) {
+			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 0);
+		}
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
 	}

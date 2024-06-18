@@ -40,8 +40,6 @@ struct Env {
 	// Lab 6 scheduler counts
 	u_int env_runs; // number of times we've been env_run'ed
 
-	// Shell Challenge
-	u_int return_value; // return value of the env
 };
 
 LIST_HEAD(Env_list, Env);
