@@ -34,13 +34,13 @@ int main(int argc, char **argv) {
 		debugf("init: bss seems okay\n");
 	}
 
-/*
+
 	debugf("init: args:");
 	for (i = 0; i < argc; i++) {
 		debugf(" '%s'", argv[i]);
 	}
 	debugf("\n");
-*/
+
 
 	debugf("init: running sh\n");
 
