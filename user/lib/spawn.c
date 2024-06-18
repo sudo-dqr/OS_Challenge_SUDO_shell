@@ -107,6 +107,7 @@ static int spawn_mapper(void *data, u_long va, size_t offset, u_int perm, const 
  *   coherence, which MOS has NOT implemented. This may result in unexpected behaviours on real
  *   CPUs! QEMU doesn't simulate caching, allowing the OS to function correctly.
  */
+// 返回值为error code 或者 子进程的envid
 int spawn(char *prog, char **argv) {
 	// Step 1: Open the file 'prog' (the path of the program).
 	// Return the error if 'open' fails.

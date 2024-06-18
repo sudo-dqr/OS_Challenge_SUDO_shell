@@ -195,22 +195,33 @@ int parsecmd(char **argv, int *rightpipe) {
 				return parsecmd(argv, rightpipe);
 			}		
 			break;	
-		case 'a':; // && 
-			// 若当前指令执行成功则执行下一条指令，若当前指令执行失败则不执行下一条指令
+		case 'a':; // &&
 			int child2 = fork();
 			if (child2 == 0) { // child shell
-				spawn
 				return argc;
 			} else { // parent shell
 				wait(child2);
-				// 检查左侧指令的返回值
-				printf("dqr: %d\n", dqr);
+				struct Env child_env = envs[ENVX(child2)];
+				if (child_env.return_value == 0) {
+					return parsecmd(argv, rightpipe);
+				} else {
+					return 0; // break from runcmd
+				}
 			}
 			break;
 		case 'o':; // ||
-			// 若当前指令执行失败则执行下一条指令，若当前指令执行成功则不执行下一条指令
 			int child3 = fork();
-
+			if (child3 == 0) {
+				return argc;
+			} else {
+				wait(child3);
+				struct Env child_env = envs[ENVX(child3)];
+				if (child_env.return_value != 0) {
+					return parsecmd(argv, rightpipe);
+				} else {
+					return 0; // break from runcmd
+				}
+			}
 			break;
 		}
 	}
@@ -228,17 +239,19 @@ void runcmd(char *s) {
 	gettoken(s, 0);
 
 	char *argv[MAXARGS];
-	int rightpipe = 0;
+	int rightpipe = 0; // rightpipe is the envid of the right side of a pipe | 
 	int argc = parsecmd(argv, &rightpipe);
 	if (argc == 0) {
 		return;
 	}
 	argv[argc] = 0;
-
-	int child = spawn(argv[0], argv);
-	close_all();
+	int child = spawn(argv[0], argv); // spawn a new process to run the command
+	// if succeeds, child is the envid of the new process.
+	// if fails, child is the error code. 
+	close_all(); // close all file descriptors
 	if (child >= 0) {
-		wait(child);
+		syscall_ipc_recv(0); 
+		wait(child); // wait(envid);
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
 	}
@@ -336,10 +349,10 @@ int main(int argc, char **argv) {
 		if ((r = fork()) < 0) {
 			user_panic("fork: %d", r);
 		}
-		if (r == 0) {
+		if (r == 0) { // 子进程shell执行指令
 			runcmd(buf);
 			exit();
-		} else {
+		} else { // 父进程shell等待 
 			wait(r);
 		}
 	}

@@ -396,6 +396,7 @@ int sys_ipc_try_send(u_int envid, u_int value, u_int srcva, u_int perm) {
 	}
 	/* Step 4: Set the target's ipc fields. */
 	e->env_ipc_value = value;
+	e->return_value = value;
 	e->env_ipc_from = curenv->env_id;
 	e->env_ipc_perm = PTE_V | perm;
 	e->env_ipc_recving = 0;

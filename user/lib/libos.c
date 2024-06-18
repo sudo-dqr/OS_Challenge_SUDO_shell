@@ -20,8 +20,8 @@ void libmain(int argc, char **argv) {
 	env = &envs[ENVX(syscall_getenvid())];
 
 	// call user main routine
-	int r = main(argc, argv);
-
+	u_int r = main(argc, argv); 
+	syscall_ipc_try_send(env->env_parent_id, r, 0, 1);
 	// exit gracefully
 	exit();
 }
