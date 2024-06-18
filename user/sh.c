@@ -250,7 +250,7 @@ void runcmd(char *s) {
 	// if fails, child is the error code. 
 	close_all(); // close all file descriptors
 	if (child >= 0) {
-		syscall_ipc_recv(0); 
+		//syscall_ipc_recv(0); 
 		wait(child); // wait(envid);
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
