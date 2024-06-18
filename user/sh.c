@@ -205,7 +205,6 @@ int parsecmd(char **argv, int *rightpipe) {
 				return argc;
 			} else { // parent shell
 				syscall_ipc_recv(0);
-				wait(child2);
 				if (env->env_ipc_value == 0) {
 					return parsecmd(argv, rightpipe);
 				} else {
@@ -220,7 +219,6 @@ int parsecmd(char **argv, int *rightpipe) {
 				return argc;
 			} else {
 				syscall_ipc_recv(0);
-				wait(child3);
 				if (env->env_ipc_value != 0) {
 					return parsecmd(argv, rightpipe);
 				} else {
@@ -256,10 +254,8 @@ void runcmd(char *s) {
 	close_all(); // close all file descriptors
 	if (child >= 0) {
 		syscall_ipc_recv(0);
-		wait(child); // wait(envid);
-		printf("child %d exited with status %d\n", child, env->env_ipc_value);
 		if (flag == 1) {
-			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 0);
+			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
 		}
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
