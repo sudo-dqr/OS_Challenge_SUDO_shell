@@ -32,6 +32,7 @@ int spawn(char *prog, char **argv) {
 
 * 对于```command1 && command2```，```commmand2```被执行当且仅当```command1```返回0
 * 对于```command1 | command2```，```command2```被执行当且仅当```command1```返回1
+* **并且```&&```和```||```的优先级相同，从左向右执行**
 
 ​	课程组已经给出了测试程序```true.c```和```false.c```，其中```true.c```返回0,```false.c```返回1,可以增加适当的输出信息用于测试。
 
@@ -60,14 +61,130 @@ int _gettoken(char *s, char **p1, char **p2) {
 }
 ```
 
-​	在```parsecmd```中增加对应的解析逻辑。
+​	当我们在```parsecmd```中解析到```&&```或```||```时，我们的思路是先```fork```一下，首先运行左侧的指令，是否运行右边的指令由左边指令的返回值确定，返回值需要通过进程间通信实现。大致梳理一下这个过程：
+
+* parent
+  * child
+    * spawn : grandson
+
+​	我们可以看出这个**通信过程是一个由底向上的过程**，我们知道指令的具体执行是由子shell进行spawn后的“孙子”进程完成的，那么就要由“晚辈的”一层层向“长辈”靠拢，这其间的通信我们使用```ipc```实现。
+
+​	```grandson```的返回值在```libos.c/libmain```中接收，并返回给```child```，需要注意的是除了这里```debugf.c/user_panic```中也要进行通信，我选择返回-1表示指令错误执行。
 
 ```c
+// libos.c
+void libmain(int argc, char **argv) {
+	// set env to point at our env structure in envs[].
+	env = &envs[ENVX(syscall_getenvid())];
+
+	// call user main routine
+	u_int r = main(argc, argv); 
+	syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+	// exit gracefully
+	exit();
+}
+// debugf.c
+void _user_panic(const char *file, int line, const char *fmt, ...) {
+	debugf("panic at %s:%d: ", file, line);
+	va_list ap;
+	va_start(ap, fmt);
+	vdebugf(fmt, ap);
+	va_end(ap);
+	syscall_ipc_try_send(env->env_parent_id, -1, 0, 0);
+	debugf("\n");
+	exit();
+}
 ```
 
+* ```child```进程使用```ipc_recv```接收返回值，**这里需要注意的是，使用syscall_ipc_recv后，并不需要再进行wait，因为接收到返回值已经说明子进程执行完毕。**
+* 另外需要注意的是，当我们遇到```&& ||```时```child```需要向```parent```进行通信，其他时候不需要，我们可以设置一个标志```flag```进行区分。
 
+```c
+void runcmd(char *s) {
+	// ...
+	int child = spawn(argv[0], argv); // spawn a new process to run the command
+	// if succeeds, child is the envid of the new process.
+	// if fails, child is the error code. 
+	close_all(); // close all file descriptors
+	if (child >= 0) {
+		syscall_ipc_recv(0);
+		if (flag == 1) {
+			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
+		}
+	} else {
+		debugf("spawn %s: %d\n", argv[0], child);
+	}
+	//...
+}
+```
 
+​	考虑到一种比较复杂的情况是```cmd1 || cmd2 || cmd3 ```等可能省略中间部分指令的情况，我选择给```parsecmd```增加一个参数```mark```来表示这条指令是否需要执行，经过梳理运行逻辑，一种可行的解决办法是：当我们遇到**短路原则**时，下一条指令是一定不需要执行的，我们将```mark```标记为0，当```return```时，若```mark```标记为0,则```return 0```，否则```return argc```。在```runcmd```原有的逻辑中，```return 0 ```说明后面没有命令，会退出命令运行，**但在此时，我们不能够退出，我们的目标是跳过一条指令，还需要判断后边的指令是否需要执行**。**我们可以对return 0的情况进行分析**
 
+1. 命令末尾：```return 0 && argv[0] = ""```
+2. 若是省略命令：```return 0 && argv[0] != ""```
+
+​	**因此我们可以利用```argv[0]```是否为空串来对这两种情况进行区分**，当是第一种情况时，直接退出；当是第二种情况时，我们需要与代表着```cmd3```的父进程进行通信，**这时我们将前两个已经短路的指令看作一个整体，返回0**。
+
+* ```parsecmd```中注意细节，每一个```return```都要对```mark```进行判断。
+
+```c
+int parsecmd(char **argv, int *rightpipe, int mark) {
+	int argc = 0;
+	while (1) {
+		char *t;
+		int fd, r;
+		int c = gettoken(0, &t);
+		flag = 0;
+		switch (c) {
+		case 0:
+			return mark ? argc : 0;
+		//...
+		case 'a':; // &&
+			flag = 1;
+			int child2 = fork();
+			if (child2 == 0) { // child shell
+				return mark ? argc : 0;
+			} else { // parent shell
+				syscall_ipc_recv(0);
+				if (env->env_ipc_value == 0) {
+					return parsecmd(argv, rightpipe, 1);
+				} else {
+					return parsecmd(argv, rightpipe, 0);
+				}
+			}
+			break;
+		case 'o':; // ||
+			flag = 1;
+			int child3 = fork();
+			if (child3 == 0) {
+				return mark ? argc : 0;
+			} else {
+				syscall_ipc_recv(0);
+				if (env->env_ipc_value != 0) {
+					return parsecmd(argv, rightpipe, 1);
+				} else {
+					return parsecmd(argv, rightpipe, 0);
+				}
+			}
+			break;
+		}
+	}
+
+	return argc;
+}
+
+void runcmd(char *s) {
+	//...
+	if (argc == 0) {
+		if (argv[0]) { // 后边还有指令
+			syscall_ipc_try_send(env->env_parent_id, 0, 0, 0);
+		}
+		return;
+	}
+	argv[argc] = 0;
+	//...
+}
+```
 
 ## 三.实现更多指令
 
