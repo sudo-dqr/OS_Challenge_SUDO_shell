@@ -157,7 +157,7 @@ int main() {
 
 	char *files[4] = {file1, file2, file3, file4};
 	for (i = 0; i < 4; i++) {
-		// debugf("file:%s\n", files[i]);
+		debugf("file:%s\n", files[i]);
 		test_read(files[i], test_str1);
 		test_read(files[i], test_str2);
 		test_read(files[i], test_str3);

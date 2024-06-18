@@ -28,7 +28,7 @@ void mips_detect_memory(u_int _memsize) {
 	/* Step 2: Calculate the corresponding 'npage' value. */
 	/* Exercise 2.1: Your code here. */
 	npage = memsize / PAGE_SIZE;
-	//printk("Memory size: %lu KiB, number of pages: %lu\n", memsize / 1024, npage);
+	printk("Memory size: %lu KiB, number of pages: %lu\n", memsize / 1024, npage);
 }
 
 /* Lab 2 Key Code "alloc" */
@@ -80,8 +80,8 @@ void mips_vm_init() {
 	 * physical address `pages` allocated before. For consideration of alignment,
 	 * you should round up the memory size before map. */
 	pages = (struct Page *)alloc(npage * sizeof(struct Page), PAGE_SIZE, 1);
-	//printk("to memory %x for struct Pages.\n", freemem);
-	//printk("pmap.c:\t mips vm init success\n");
+	printk("to memory %x for struct Pages.\n", freemem);
+	printk("pmap.c:\t mips vm init success\n");
 }
 
 /* Overview:
@@ -381,17 +381,17 @@ void physical_memory_manage_check(void) {
 	for (i = 9; i >= 0; i--) {
 		test_pages[i].pp_ref = i;
 		// test_pages[i].pp_link=NULL;
-		// printk("0x%x  0x%x\n",&test_pages[i], test_pages[i].pp_link.le_next);
+		printk("0x%x  0x%x\n",&test_pages[i], test_pages[i].pp_link.le_next);
 		LIST_INSERT_HEAD(&test_free, &test_pages[i], pp_link);
-		// printk("0x%x  0x%x\n",&test_pages[i], test_pages[i].pp_link.le_next);
+		printk("0x%x  0x%x\n",&test_pages[i], test_pages[i].pp_link.le_next);
 	}
 	p = LIST_FIRST(&test_free);
 	int answer1[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
 	assert(p != NULL);
 	while (p != NULL) {
-		// printk("%d %d\n",p->pp_ref,answer1[j]);
+		printk("%d %d\n",p->pp_ref,answer1[j]);
 		assert(p->pp_ref == answer1[j++]);
-		// printk("ptr: 0x%x v: %d\n",(p->pp_link).le_next,((p->pp_link).le_next)->pp_ref);
+		printk("ptr: 0x%x v: %d\n",(p->pp_link).le_next,((p->pp_link).le_next)->pp_ref);
 		p = LIST_NEXT(p, pp_link);
 	}
 	// insert_after test
@@ -399,14 +399,14 @@ void physical_memory_manage_check(void) {
 	q = (struct Page *)alloc(sizeof(struct Page), PAGE_SIZE, 1);
 	q->pp_ref = 20;
 
-	// printk("---%d\n",test_pages[4].pp_ref);
+	printk("---%d\n",test_pages[4].pp_ref);
 	LIST_INSERT_AFTER(&test_pages[4], q, pp_link);
-	// printk("---%d\n",LIST_NEXT(&test_pages[4],pp_link)->pp_ref);
+	printk("---%d\n",LIST_NEXT(&test_pages[4],pp_link)->pp_ref);
 	p = LIST_FIRST(&test_free);
 	j = 0;
-	// printk("into test\n");
+	printk("into test\n");
 	while (p != NULL) {
-		//      printk("%d %d\n",p->pp_ref,answer2[j]);
+		printk("%d %d\n",p->pp_ref,answer2[j]);
 		assert(p->pp_ref == answer2[j++]);
 		p = LIST_NEXT(p, pp_link);
 	}
@@ -452,7 +452,7 @@ void page_check(void) {
 
 	printk("va2pa(boot_pgdir, 0x0) is %x\n", va2pa(boot_pgdir, 0x0));
 	printk("page2pa(pp1) is %x\n", page2pa(pp1));
-	//  printk("pp1->pp_ref is %d\n",pp1->pp_ref);
+	printk("pp1->pp_ref is %d\n",pp1->pp_ref);
 	assert(va2pa(boot_pgdir, 0x0) == page2pa(pp1));
 	assert(pp1->pp_ref == 1);
 
