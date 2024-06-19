@@ -315,12 +315,14 @@ void runcmd(char *s) {
 	// if fails, child is the error code. 
 	close_all(); // close all file descriptors
 	if (child >= 0) {
-		syscall_ipc_recv(0);
 		if (flag == 1) {
+			syscall_ipc_recv(0);
 			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
-		} else if (job_flag == 1) { // 需要创建后台任务 
+		}
+		if (job_flag == 1) { // 需要创建后台任务 
 			syscall_create_job(child, cmd);
 		}
+		syscall_ipc_recv(0);
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
 	}

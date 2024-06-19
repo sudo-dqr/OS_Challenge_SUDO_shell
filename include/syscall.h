@@ -24,6 +24,7 @@ enum {
 	SYS_read_dev,
 	SYS_create_job,
 	SYS_print_jobs,
+	SYS_set_job_done,
 	MAX_SYSNO,
 };
 

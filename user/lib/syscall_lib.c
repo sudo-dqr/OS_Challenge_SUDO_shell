@@ -82,3 +82,7 @@ void syscall_create_job(u_int env_id, char * cmd) {
 void syscall_print_jobs() {
 	return msyscall(SYS_print_jobs);
 }
+
+void syscall_set_job_done(u_int envid) {
+	return msyscall(SYS_set_job_done, envid);
+}

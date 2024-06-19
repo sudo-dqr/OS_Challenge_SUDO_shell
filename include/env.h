@@ -63,6 +63,7 @@ struct Env *env_create(const void *binary, size_t size, int priority);
 /*Shell Challenge*/
 void env_create_job(u_int envid, char * cmd);
 void env_print_jobs(void);
+void env_set_job_done(u_int envid);
 /*****************/
 
 void env_destroy(struct Env *e);

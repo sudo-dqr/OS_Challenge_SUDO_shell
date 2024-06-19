@@ -401,6 +401,15 @@ void env_print_jobs() {
 	}
 }
 
+/*Overview : set job status to Done*/
+void env_set_job_done(u_int envid) {
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].envid == envid) {
+			jobs[i].job_status = 0;
+			break;
+		}
+	}
+}
 
 /* Overview:
  *  Free env e and all memory it uses.

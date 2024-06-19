@@ -94,6 +94,11 @@ void sys_print_jobs(void) {
 	return;
 }
 
+void sys_set_job_done(u_int envid) {
+	env_set_job_done(envid);
+	return;
+}
+
 /* Overview:
  *   Register the entry of user space TLB Mod handler of 'envid'.
  *
@@ -544,6 +549,7 @@ void *syscall_table[MAX_SYSNO] = {
     [SYS_write_dev] = sys_write_dev,
     [SYS_read_dev] = sys_read_dev,
 	[SYS_create_job] = sys_create_job,
+	[SYS_set_job_done] = sys_set_job_done,
 	[SYS_print_jobs] = sys_print_jobs,
 };
 
