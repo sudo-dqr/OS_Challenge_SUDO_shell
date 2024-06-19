@@ -527,8 +527,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 				debugf("syntax error: > not followed by word\n");
 				exit();
 			}
-			if ((fd = open(t, O_WRONLY)) < 0) {
-				debugf("failed to open %s\n");
+			if ((fd = open(t, O_RDONLY | O_WRONLY | O_CREAT)) < 0) {
+				debugf("failed to open %s\n", t);
 				exit();
 			}
 			struct Stat st;
