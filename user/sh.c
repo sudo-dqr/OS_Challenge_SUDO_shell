@@ -59,6 +59,9 @@ int _gettoken(char *s, char **p1, char **p2) {
 		} else if (*s1 == *s && *s1 == '|') {
 			s++;
 			t = 'o';
+		} else if (*s1 == *s && *s1 == '>') {
+			s++;
+			t = 'z';
 		}
 		*s++ = 0;
 		*p2 = s;
@@ -226,6 +229,27 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 				}
 			}
 			break;
+		case 'z':; // 实现追加重定向
+			if (gettoken(0, &t) != 'w') {
+				debugf("syntax error: > not followed by word\n");
+				exit();
+			}
+			if ((fd = open(t, O_WRONLY)) < 0) {
+				debugf("failed to open %s\n");
+				exit();
+			}
+			struct Stat st;
+			if (fstat(fd, &st) < 0) {
+				debugf("failed to fstat %s\n", t);
+				exit();
+			}
+			seek(fd, st.st_size);
+			if ((r = dup(fd, 1)) < 0) {
+				debugf("failed to duplicate file to <stdout>\n");
+				exit();
+			}
+			close(fd);
+			break;	
 		}
 	}
 
