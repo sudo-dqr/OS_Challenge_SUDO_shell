@@ -140,8 +140,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			// utilize 'debugf' to print relevant messages,
 			// and subsequently terminate the process using 'exit'.
 			/* Exercise 6.5: Your code here. (2/3) */
-			if ((fd = open(t, O_WRONLY)) < 0) {
-				debugf("failed to open %s\n");
+			if ((fd = open(t, O_TRUNC)) < 0) {
+				debugf("failed to open %s\n", t);
 				exit();
 			}
 			if ((r = dup(fd, 1)) < 0) {
@@ -234,10 +234,15 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 				debugf("syntax error: > not followed by word\n");
 				exit();
 			}
-			if ((fd = open(t, O_WRONLY)) < 0) {
-				debugf("failed to open %s\n");
-				exit();
+			fd = open(t, O_RDONLY);
+			if (fd < 0) { // 没有文件则创建
+				fd = open(t, O_CREAT);
+				if (fd < 0) {
+					debugf("failed to open %s\n", t);
+					exit();
+				}
 			}
+			fd = open(t, O_WRONLY); // 写权限
 			struct Stat st;
 			if (fstat(fd, &st) < 0) {
 				debugf("failed to fstat %s\n", t);
