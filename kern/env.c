@@ -438,6 +438,7 @@ void env_kill_job(int jobId) {
 			envid2env(jobs[i].envid, &e, 0);
 			if (jobs[i].job_status == 1) { // running 
 				env_destroy(e);
+				jobs[i].job_status = 0;
 				for (int j = i; j < jobCnt - 1; j++) {
 					jobs[j] = jobs[j+1];
 				}
