@@ -44,6 +44,17 @@ int _gettoken(char *s, char **p1, char **p2) {
 		*p2 = s;
 		return 'w';
 	}
+	
+	if (*s == '\'') {
+		*s++;
+		*p1 = s;
+		while (*s && *s != '\'') {
+			s++;
+		}
+		*(s++) = 0;
+		*p2 = s;
+		return 'f';
+	}
 
 	if (*s == 0) {
 		return 0;
@@ -265,6 +276,9 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			}
 			close(fd);
 			break;	
+		case 'f':; // 反引号 
+			runcmd(t);
+			break;
 		}
 	}
 
@@ -411,7 +425,7 @@ int main(int argc, char **argv) {
 		}
 		user_assert(r == 0);
 	}
-	//init_history(); // 初始化 .mosh_history文件
+
 	for (;;) {
 		if (interactive) {
 			printf("\n$ ");
