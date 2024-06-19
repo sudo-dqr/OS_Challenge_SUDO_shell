@@ -420,7 +420,6 @@ void env_fg_job(int jobId) {
 				env_run(e);
 				for (int j = i; j < jobCnt - 1; j++) {
 					jobs[j] = jobs[j + 1];
-					jobs[i].job_id--;
 				}
 				jobCnt--;
 			} else {
@@ -441,7 +440,6 @@ void env_kill_job(int jobId) {
 				env_destroy(e);
 				for (int j = i; j < jobCnt - 1; j++) {
 					jobs[j] = jobs[j + 1];
-					jobs[j].job_id--;
 				}
 				jobCnt--;
 			} else {
