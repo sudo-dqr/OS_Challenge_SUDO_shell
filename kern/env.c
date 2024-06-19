@@ -385,8 +385,22 @@ void env_create_job(u_int envid, char * cmd) {
 	jobs[jobCnt].envid = envid;
 	jobs[jobCnt].job_status = 1; // Running
 	strcpy(jobs[jobCnt].cmd, cmd);
-	jobs[jobCnt].job_id = (++jobCnt);
+	jobs[jobCnt].job_id = jobCnt + 1;
+	jobCnt++;
 }
+
+/*Overview : print jobs*/
+
+void env_print_jobs() {
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].job_status == 1) {
+			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Running", jobs[i].envid, jobs[i].cmd);
+		} else {
+			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Done", jobs[i].envid, jobs[i].cmd);
+		}
+	}
+}
+
 
 /* Overview:
  *  Free env e and all memory it uses.

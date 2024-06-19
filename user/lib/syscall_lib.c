@@ -78,3 +78,7 @@ int syscall_read_dev(void *va, u_int dev, u_int size) {
 void syscall_create_job(u_int env_id, char * cmd) {
 	return msyscall(SYS_create_job, env_id, cmd);
 }
+
+void syscall_print_jobs() {
+	return msyscall(SYS_print_jobs);
+}

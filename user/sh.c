@@ -94,7 +94,7 @@ int gettoken(char *s, char **p1) {
 #define MAXARGS 128
 
 void execute_jobs() {
-	
+	syscall_print_jobs();
 }
 
 void execute_fg(int jobId) {

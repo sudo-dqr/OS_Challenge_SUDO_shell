@@ -59,8 +59,12 @@ void env_init(void);
 int env_alloc(struct Env **e, u_int parent_id);
 void env_free(struct Env *);
 struct Env *env_create(const void *binary, size_t size, int priority);
+
 /*Shell Challenge*/
 void env_create_job(u_int envid, char * cmd);
+void env_print_jobs(void);
+/*****************/
+
 void env_destroy(struct Env *e);
 
 int envid2env(u_int envid, struct Env **penv, int checkperm);

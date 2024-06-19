@@ -23,6 +23,7 @@ enum {
 	SYS_write_dev,
 	SYS_read_dev,
 	SYS_create_job,
+	SYS_print_jobs,
 	MAX_SYSNO,
 };
 
