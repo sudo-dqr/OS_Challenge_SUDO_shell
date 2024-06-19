@@ -98,11 +98,11 @@ void execute_jobs() {
 }
 
 void execute_fg(int jobId) {
-	printf("fg %d\n", jobId);
+	syscall_fg_job(jobId);
 }
 
 void execute_kill(int jobId) {
-	printf("kill %d\n", jobId);
+	syscall_kill_job(jobId);
 }
 
 int parsecmd(char **argv, int *rightpipe, int mark) {

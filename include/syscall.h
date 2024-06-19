@@ -25,6 +25,8 @@ enum {
 	SYS_create_job,
 	SYS_print_jobs,
 	SYS_set_job_done,
+	SYS_fg_job,
+	SYS_kill_job,
 	MAX_SYSNO,
 };
 

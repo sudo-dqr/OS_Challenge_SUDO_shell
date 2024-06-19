@@ -86,3 +86,11 @@ void syscall_print_jobs() {
 void syscall_set_job_done(u_int envid) {
 	return msyscall(SYS_set_job_done, envid);
 }
+
+void syscall_fg_job(int jobId) {
+	return msyscall(SYS_fg_job, jobId);
+}
+
+void syscall_kill_job(int jobId) {
+	return msyscall(SYS_kill_job, jobId);
+}
