@@ -418,6 +418,10 @@ void env_fg_job(int jobId) {
 			envid2env(jobs[i].envid, &e, 0);
 			if (jobs[i].job_status == 1) { // running
 				env_run(e);
+				for (int j = i; j < jobCnt - 1; j++) {
+					jobs[j] = jobs[j+1];
+				}
+				jobCnt--;
 			} else {
 				printk("fg: (0x%08x) not running\n\r", jobId);
 			}
@@ -433,8 +437,11 @@ void env_kill_job(int jobId) {
 			struct Env *e;
 			envid2env(jobs[i].envid, &e, 0);
 			if (jobs[i].job_status == 1) { // running 
-				jobs[i].job_status = 0;
 				env_destroy(e);
+				for (int j = i; j < jobCnt - 1; j++) {
+					jobs[j] = jobs[j+1];
+				}
+				jobCnt--;
 			} else {
 				printk("fg: (0x%08x) not running\n\r", jobId);
 			}
