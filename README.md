@@ -440,7 +440,43 @@ int main(int argc, char **argv) {
 
 ​	使用反引号实现指令替换，**只需要考虑```echo```进行的输出**，需要将反引号内指令执行的所有标准输出替换为```echo```的参数。
 
+* 换句话说，执行一下反引号里边的内容
 
+​	首先增加反引号```token```
+
+```c
+int _gettoken(char *s, char **p1, char **p2) {
+	//...
+	if(*s == '`') { // 识别反引号
+    	*s = 0;
+    	s++;
+    	*p1 = s;
+   		while(*s && (*s != '`')){
+        	s++;
+    	}
+    	*s++ = 0;
+    	*p2 = s;
+    	return 'f'; 
+	}
+    //...
+}
+```
+
+​	在parsecmd中增加对应逻辑，这时反引号中间的指令已经被保存在字符串指针```t```中。
+
+```c
+int parsecmd(char **argv, int *rightpipe, int mark) {
+	int argc = 0;
+	while (1) {
+        //...
+		case 'f':; // 反引号 
+			runcmd(t);
+			break;
+		}
+    	//...
+	}
+}
+```
 
 ## 五.实现注释功能
 
@@ -462,7 +498,7 @@ void runcmd(char *s) {
 
 ## 六.实现历史指令
 
-
+​	参考往届学长博客，不多赘述。
 
 ## 七.实现一行多指令
 
@@ -576,6 +612,7 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 
 ```c
 		case '&':;
+			job_flag = 1;
 			int child = fork();
 			if (child == 0) { // child shell
 				return argc;
@@ -591,8 +628,121 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 >
 > * 基本的实现思路为我们在runcmd时检查指令，如果为内置指令不再进行```spawn```而是直接调用```sh.c```中写好的函数执行。
 > * 为了实现进程间的共享，我选择在内核态对后台进程进行管理，通过系统调用```syscall_*```进行更新
+> * 加系统调用的流程上机考试早已熟悉
 
+​	**首先：如何实现内置指令**，区别于外部指令，内部指令执行时不会进行```fork```，效率更高，当我们在```runcmd```时应当特判遇到的内置指令，调用```sh.c```中写好的处理函数执行。
 
+```c
+	if (strcmp(argv[0], "jobs") == 0) {
+		execute_jobs();
+		exit();
+	} else if (strcmp(argv[0], "fg") == 0) {
+		int jobId = parseJobId(argv[1]);
+		execute_fg(jobId);
+		exit();
+	} else if (strcmp(argv[0], "kill") == 0) {
+		int jobId = parseJobId(argv[1]);
+		execute_kill(jobId);
+		exit();
+	}
+```
+
+​	为了更好的管理工作的信息，我选择新建一个```Job```结构体，定义在```env.h```中
+
+```c
+struct Job {
+	int job_id;
+	int job_status; // 0 for Done; 1 for Running 
+	int envid;
+	char cmd[1024];
+};
+```
+
+​	在内核态对```struct Job```数组进行管理，将数组定义在```env.c```中便于操作。
+
+```c
+struct Job jobs[32];
+int jobCnt = 0;
+```
+
+​	**重点在于何时将进程放入后台：**我们设置一个全局变量```job_flag```读到```&```时置为1,在```runcmd```时，对这个标记进行特判，从而将进程放到后台，**这里需要注意的是，```syscall_ipc_recv```应当在```syscall_create_job```之后，否则会一直阻塞，不能加入到后台，直到进程运行完毕才能加入到后台。**
+
+```c
+	if (child >= 0) {
+		if (flag == 1) {
+			syscall_ipc_recv(0);
+			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
+		}
+		if (job_flag == 1) { // 需要创建后台任务 
+			syscall_create_job(child, cmd);
+		}
+		syscall_ipc_recv(0);
+	} else {
+		debugf("spawn %s: %d\n", argv[0], child);
+	}
+```
+
+​	这里创建后台任务也是通过系统调用实现，实际上是对内核态```jobs```数组赋值的操作，这样就实现了加入后台任务。
+
+```c
+//env.c
+void env_create_job(u_int envid, char * cmd) {
+	jobs[jobCnt].envid = envid;
+	jobs[jobCnt].job_status = 1; // Running
+	strcpy(jobs[jobCnt].cmd, cmd);
+	jobs[jobCnt].job_id = jobCnt + 1;
+	jobCnt++;
+}
+```
+
+​	加入后台时，将运行状态```status```设置为1(```Running```)，0(```Done```).
+
+​	```jobs```操作实际上是一个“输出”操作，我们通过系统调用实现。
+
+```c
+//sh.c
+void execute_jobs() { // 约等于无用封装
+	syscall_print_jobs();
+}
+
+//env.c
+void env_print_jobs() {
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].job_status == 1) {
+			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Running", jobs[i].envid, jobs[i].cmd);
+		} else {
+			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Done", jobs[i].envid, jobs[i].cmd);
+		}
+	}
+}
+```
+
+​	**这里还有很重要的一点是：后台进程状态的变化**，当后台进程结束时，应当设置状态为```Done```，而我们知道后台进程结束点是在```libmain```，在```libmain```中通过系统调用更改```job_status = 0(Done)```。
+
+```c
+// libos.c
+void libmain(int argc, char **argv) {
+	// set env to point at our env structure in envs[].
+	env = &envs[ENVX(syscall_getenvid())];
+
+	// call user main routine
+	u_int r = main(argc, argv);
+	syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+	syscall_set_job_done(env->env_id);
+	// exit gracefully
+	exit();
+}
+
+//env.c
+void env_set_job_done(u_int envid) {
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].envid == envid) {
+			jobs[i].job_status = 0;
+			break;
+		}
+	}
+}
+```
 
 ### 10.3 实现```fg```指令
 
@@ -609,11 +759,70 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
   }
   ```
 
+* ```fg```命令同样通过系统调用实现，从后台```jobs```中删除```jobid```代表的工作，并运行该进程
+
+  ```c
+  //sh.c
+  void execute_fg(int jobId) {
+  	syscall_fg_job(jobId);
+  }
   
+  //env.c
+  void env_fg_job(int jobId) {
+  	for (int i = 0; i < jobCnt; i++) {
+  		if (jobs[i].job_id == jobId) {
+  			struct Env *e;
+  			envid2env(jobs[i].envid, &e, 0);
+  			if (jobs[i].job_status == 1) { // running
+  				env_run(e);
+  				for (int j = i; j < jobCnt - 1; j++) {
+  					jobs[j] = jobs[j+1];
+  				}
+  				jobCnt--;
+  			} else {
+  				printk("fg: (0x%08x) not running\n\r", jobId);
+  			}
+  			return;
+  		}
+  	}
+  	printk("fg: job (%d) do not exist\n\r", jobId);
+  }
+  ```
 
 ### 10.4 ```kill```指令
 
+* ```kill```命令同样通过系统调用实现，杀死后台进程
 
+  ```c
+  // sh.c
+  void execute_kill(int jobId) {
+  	syscall_kill_job(jobId);
+  }
+  
+  // env.c
+  void env_kill_job(int jobId) {
+  	for (int i = 0; i < jobCnt; i++) {
+  		if (jobs[i].job_id == jobId) {
+  			struct Env *e;
+  			envid2env(jobs[i].envid, &e, 0);
+  			if (jobs[i].job_status == 1) { // running 
+  				env_destroy(e);
+  				jobs[i].job_status = 0;
+  				for (int j = i; j < jobCnt - 1; j++) {
+  					jobs[j] = jobs[j+1];
+  				}
+  				jobCnt--;
+  			} else {
+  				printk("fg: (0x%08x) not running\n\r", jobId);
+  			}
+  			return;
+  		}
+  	}
+  	printk("fg: job (%d) do not exist\n\r", jobId);
+  }
+  ```
+
+  
 
 
 
