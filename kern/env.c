@@ -19,6 +19,11 @@ static Pde *base_pgdir;
 
 static uint32_t asid_bitmap[NASID / 32] = {0};
 
+/*Jobs*/
+struct Job jobs[32];
+int jobCnt = 0;
+
+
 /* Overview:
  *  Allocate an unused ASID.
  *
@@ -372,6 +377,15 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 	load_icode(e,binary,size);
 	TAILQ_INSERT_HEAD(&env_sched_list,e,env_sched_link);
 	return e;
+}
+
+/*Overview : create backtable job*/
+
+void env_create_job(u_int envid, char * cmd) {
+	jobs[jobCnt].envid = envid;
+	jobs[jobCnt].job_status = 1; // Running
+	strcpy(jobs[jobCnt].cmd, cmd);
+	jobs[jobCnt].job_id = (++jobCnt);
 }
 
 /* Overview:

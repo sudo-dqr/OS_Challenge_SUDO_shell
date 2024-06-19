@@ -84,6 +84,11 @@ int sys_env_destroy(u_int envid) {
 	return 0;
 }
 
+void sys_create_job(u_int envid, char * cmd) {
+	env_create_job(envid, cmd);
+	return;
+}
+
 /* Overview:
  *   Register the entry of user space TLB Mod handler of 'envid'.
  *
@@ -533,6 +538,7 @@ void *syscall_table[MAX_SYSNO] = {
     [SYS_cgetc] = sys_cgetc,
     [SYS_write_dev] = sys_write_dev,
     [SYS_read_dev] = sys_read_dev,
+	[SYS_create_job] = sys_create_job,
 };
 
 /* Overview:

@@ -5,6 +5,7 @@
 #define SYMBOLS "<|>&;()"
 
 int flag = 0;
+int job_flag = 0; // 遇到后台指令
 
 /* Overview:
  *   Parse the next token from the string at s.
@@ -115,6 +116,7 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 		case 0:
 			return mark ? argc : 0;
 		case 'w':
+			job_flag = 0; // 读到下一个单词说明有新指令 可以归0
 			if (argc >= MAXARGS) {
 				debugf("too many arguments\n");
 				exit();
@@ -206,6 +208,7 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			}
 			break;
 		case '&':;
+			job_flag = 1;
 			int child1 = fork();
 			if (child1 == 0) { // child shell 后台指令
 				return argc;
@@ -268,6 +271,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 	return argc;
 }
 
+char cmd[1024]; // 存储运行指令
+
 void runcmd(char *s) {
 	/*Shell Challenge: #*/
 	char *p = s;
@@ -313,6 +318,8 @@ void runcmd(char *s) {
 		syscall_ipc_recv(0);
 		if (flag == 1) {
 			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
+		} else if (job_flag == 1) { // 需要创建后台任务 
+			syscall_create_job(child, cmd);
 		}
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
@@ -419,6 +426,7 @@ int main(int argc, char **argv) {
 			user_panic("fork: %d", r);
 		}
 		if (r == 0) { // 子进程shell执行指令
+			strcpy(cmd, buf);
 			runcmd(buf);
 			exit();
 		} else { // 父进程shell等待 

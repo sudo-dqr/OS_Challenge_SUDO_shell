@@ -42,6 +42,14 @@ struct Env {
 	
 };
 
+struct Job {
+	int job_id;
+	int job_status; // 0 for Done; 1 for Running 
+	int envid;
+	char cmd[1024];
+};
+
+
 LIST_HEAD(Env_list, Env);
 TAILQ_HEAD(Env_sched_list, Env);
 extern struct Env *curenv;		     // the current env
@@ -51,6 +59,8 @@ void env_init(void);
 int env_alloc(struct Env **e, u_int parent_id);
 void env_free(struct Env *);
 struct Env *env_create(const void *binary, size_t size, int priority);
+/*Shell Challenge*/
+void env_create_job(u_int envid, char * cmd);
 void env_destroy(struct Env *e);
 
 int envid2env(u_int envid, struct Env **penv, int checkperm);
