@@ -92,6 +92,18 @@ int gettoken(char *s, char **p1) {
 
 #define MAXARGS 128
 
+void execute_jobs() {
+	
+}
+
+void execute_fg(int jobId) {
+	printf("fg %d\n", jobId);
+}
+
+void execute_kill(int jobId) {
+	printf("kill %d\n", jobId);
+}
+
 int parsecmd(char **argv, int *rightpipe, int mark) {
 	int argc = 0;
 	while (1) {
@@ -195,7 +207,7 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			break;
 		case '&':;
 			int child1 = fork();
-			if (child1 == 0) { // child shell
+			if (child1 == 0) { // child shell 后台指令
 				return argc;
 			} else { // parent shell
 				return parsecmd(argv, rightpipe, 1);
@@ -275,6 +287,24 @@ void runcmd(char *s) {
 		return;
 	}
 	argv[argc] = 0;
+
+	/*Shell Challenge : built-in command*/
+	if (strcmp(argv[0], "jobs") == 0) {
+		execute_jobs();
+		exit();
+	} else if (strcmp(argv[0], "fg") == 0) {
+		int jobId = parseJobId(argv[1]);
+		execute_fg(jobId);
+		exit();
+	} else if (strcmp(argv[0], "kill") == 0) {
+		int jobId = parseJobId(argv[1]);
+		execute_kill(jobId);
+		exit();
+	} else if (strcmp(argv[0], "history") == 0) {
+		exit();
+	}
+
+	/*external command*/
 	int child = spawn(argv[0], argv); // spawn a new process to run the command
 	// if succeeds, child is the envid of the new process.
 	// if fails, child is the error code. 
@@ -291,6 +321,15 @@ void runcmd(char *s) {
 		wait(rightpipe);
 	}
 	exit();
+}
+
+int parseJobId(char *s) {
+	int jobId = 0;
+	while (*s) {
+		jobId = jobId * 10 + (*s - '0');
+		s++; 
+	}
+	return jobId;
 }
 
 void readline(char *buf, u_int n) {

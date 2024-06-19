@@ -587,11 +587,28 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 
 ### 10.2 实现```jobs```指令
 
+> 关于后台任务的三个指令我们需要实现为内置指令，shell中分为内置指令和外部指令，外部指令需要fork一个子进程进行执行，而内置指令不会，效率更高。
+>
+> * 基本的实现思路为我们在runcmd时检查指令，如果为内置指令不再进行```spawn```而是直接调用```sh.c```中写好的函数执行。
+
 
 
 ### 10.3 实现```fg```指令
 
+* 首先构建一个简单的辅助函数，用来将```argv[1]```转换为```<jobid>```
 
+  ```c
+  int parseJobId(char *s) {
+  	int jobId = 0;
+  	while (*s) {
+  		jobId = jobId * 10 + (*s - '0');
+  		s++; 
+  	}
+  	return jobId;
+  }
+  ```
+
+  
 
 ### 10.4 ```kill```指令
 
