@@ -45,15 +45,16 @@ int _gettoken(char *s, char **p1, char **p2) {
 		return 'w';
 	}
 	
-	if (*s == '\'') {
-		*s++;
-		*p1 = s;
-		while (*s && *s != '\'') {
-			s++;
-		}
-		*(s++) = 0;
-		*p2 = s;
-		return 'f';
+	if(*s == '`') { // 识别反引号
+    	*s = 0;
+    	s++;
+    	*p1 = s;
+   		while(*s && (*s != '`')){
+        	s++;
+    	}
+    	*s++ = 0;
+    	*p2 = s;
+    	return 'f'; 
 	}
 
 	if (*s == 0) {
