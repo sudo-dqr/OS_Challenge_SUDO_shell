@@ -234,15 +234,10 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 				debugf("syntax error: > not followed by word\n");
 				exit();
 			}
-			fd = open(t, O_RDONLY);
-			if (fd < 0) { // 没有文件则创建
-				fd = open(t, O_CREAT);
-				if (fd < 0) {
-					debugf("failed to open %s\n", t);
-					exit();
-				}
+			if ((fd = open(t, O_RDONLY | O_WRONLY | O_CREAT)) < 0) {
+				debugf("failed to open %s\n", t);
+				exit();
 			}
-			fd = open(t, O_WRONLY); // 写权限
 			struct Stat st;
 			if (fstat(fd, &st) < 0) {
 				debugf("failed to fstat %s\n", t);
