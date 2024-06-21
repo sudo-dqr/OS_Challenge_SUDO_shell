@@ -396,7 +396,7 @@ void env_print_jobs() {
 		if (jobs[i].job_killed) {
 			continue;
 		}
-		if (jobs[i].job_status == 1) {
+		if (jobs[i].job_status == 0) {
 			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Running", jobs[i].envid, jobs[i].cmd);
 		} else {
 			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Done", jobs[i].envid, jobs[i].cmd);
