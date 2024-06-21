@@ -415,7 +415,7 @@ int env_fg_job(int jobId) {
 	for (int i = 0; i < jobCnt; i++) {
 		if (jobs[i].job_id == jobId) {
 			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
-				return -2;
+				return jobs[i].envid;
 			} else {
 				jobs[i].job_status = 0;
 				return jobs[i].envid;

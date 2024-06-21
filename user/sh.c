@@ -113,7 +113,7 @@ void execute_fg(int jobId) {
 	int envid = syscall_fg_job(jobId);
 	if (envid == -1) {
 		printf("fg: job (%d) do not exist\n", jobId);
-	} else if (envid == -2) {
+	}  else if (envs[ENVX(envid)].env_status != ENV_RUNNABLE) {
 		printf("fg: (0x%08x) not running\n", envid);
 	} else {
 		wait(envid);
