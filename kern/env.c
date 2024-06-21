@@ -412,32 +412,40 @@ void env_set_job_done(u_int envid) {
 }
 
 int env_fg_job(int jobId) {
-	if (jobs[jobId - 1].envid == 0 || jobId > 16) {
-		return -1;
-	} else if (envs[ENVX(jobs[jobId - 1].envid)].env_status != ENV_RUNNABLE) {
-		return -2;
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].job_id == jobId) {
+			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
+				return -2;
+			} else {
+				for (int j = i; j < jobCnt - 1; j++) {
+					jobs[i] = jobs[i + 1];
+				}
+				jobCnt--;
+				return jobs[i].envid;
+			}
+		}
 	}
-	for (int i = jobId - 1; i < jobCnt - 1; i++) {
-		jobs[i] = jobs[i + 1];
-	}
-	jobCnt--;
-	return jobs[jobId - 1].envid;
+	return -1;
 }
 
 void env_kill_job(int jobId) {
-	if (jobs[jobId - 1].envid == 0 || jobId > 16) {
-		printk("fg: job (%d) do not exist\n", jobId);
-		return;
+	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].job_id == jobId) {
+			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
+				printk("fg: (0x%08x) not running\n", jobs[i].envid);
+				return;
+			} else {
+				env_destroy(&envs[ENVX(jobs[i].envid)]);
+				for (int j = i; j < jobCnt - 1; j++) {
+					jobs[i] = jobs[i + 1];
+				}
+				jobCnt--;
+				return;
+			}
+		}
 	}
-	if (envs[ENVX(jobs[jobId - 1].envid)].env_status != ENV_RUNNABLE) {
-		printk("fg: (0x%08x) not running\n", jobs[jobId - 1].envid);
-		return;
-	}
-	env_destroy(&envs[ENVX(jobs[jobId - 1].envid)]);
-	for (int i = jobId - 1; i < jobCnt - 1; i++) {
-		jobs[i] = jobs[i + 1];
-	}
-	jobCnt--;
+	printk("fg: job (%d) do not exist\n", jobId);
+	return;
 }
 
 /* Overview:
