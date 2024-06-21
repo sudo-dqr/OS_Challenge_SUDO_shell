@@ -417,7 +417,10 @@ int env_fg_job(int jobId) {
 			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
 				return jobs[i].envid;
 			} else {
-				jobs[i].job_status = 0;
+				for (int j = i; j < jobCnt - 1; j++) {
+					jobs[i] = jobs[i + 1];
+				}
+				jobCnt--;
 				return jobs[i].envid;
 			}
 		}
