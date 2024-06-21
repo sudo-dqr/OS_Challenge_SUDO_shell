@@ -117,6 +117,41 @@ void execute_kill(int jobId) {
 	syscall_kill_job(jobId);
 }
 
+void create_history() {
+	int fd;
+	if ((fd = open(".mosh_history", O_CREAT)) < 0) {
+		printf("create history file failed\n");
+	}
+	return;
+}
+
+void save_history_cmd(char * cmd) {
+	int fd;
+	if ((fd = open(".mosh_history", O_WRONLY)) < 0) {
+		printf("open history file failed\n");
+	}
+	struct Stat st;
+	stat(".mosh_history", &st);
+	seek(fd, st.st_size);
+	write(fd, cmd, strlen(cmd));
+	write(fd, "\n", 1);
+	close(fd);
+	return;
+}
+
+void print_history() {
+	int fd;
+	if ((fd = open(".mosh_history", O_RDONLY)) < 0) {
+		printf("open history file failed\n");
+	}
+	char ch;
+	while (read(fd, &ch, 1)) {
+		printf("%c", ch);
+	}
+	close(fd);
+	return;
+}
+
 int parsecmd(char **argv, int *rightpipe, int mark) {
 	int argc = 0;
 	while (1) {
@@ -321,6 +356,7 @@ void runcmd(char *s) {
 		execute_kill(jobId);
 		exit();
 	} else if (strcmp(argv[0], "history") == 0) {
+		print_history();
 		exit();
 	}
 
@@ -426,7 +462,7 @@ int main(int argc, char **argv) {
 		}
 		user_assert(r == 0);
 	}
-
+	create_history();
 	for (;;) {
 		if (interactive) {
 			printf("\n$ ");
@@ -443,6 +479,7 @@ int main(int argc, char **argv) {
 			user_panic("fork: %d", r);
 		}
 		if (r == 0) { // 子进程shell执行指令
+			save_history_cmd(buf);
 			strcpy(cmd, buf);
 			runcmd(buf);
 			exit();
