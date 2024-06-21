@@ -417,10 +417,7 @@ int env_fg_job(int jobId) {
 			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
 				return -2;
 			} else {
-				for (int j = i; j < jobCnt - 1; j++) {
-					jobs[i] = jobs[i + 1];
-				}
-				jobCnt--;
+				jobs[i].job_status = 0;
 				return jobs[i].envid;
 			}
 		}
@@ -435,7 +432,6 @@ void env_kill_job(int jobId) {
 				printk("fg: (0x%08x) not running\n", jobs[i].envid);
 				return;
 			} else {
-				env_destroy(&envs[ENVX(jobs[i].envid)]);
 				for (int j = i; j < jobCnt - 1; j++) {
 					jobs[i] = jobs[i + 1];
 				}
