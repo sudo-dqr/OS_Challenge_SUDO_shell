@@ -498,7 +498,46 @@ void runcmd(char *s) {
 
 ## 六.实现历史指令
 
-​	参考往届学长博客，不多赘述。
+* 启动```shell```时创建```.mosh_history```文件
+* 运行命令时将命令保存到```.mosh_history```
+* ```history```命令输出文件内容
+
+```c
+void create_history() {
+	int fd;
+	if ((fd = open(".mosh_history", O_CREAT)) < 0) {
+		printf("create history file failed\n");
+	}
+	return;
+}
+
+void save_history_cmd(char * cmd) {
+	int fd;
+	if ((fd = open(".mosh_history", O_WRONLY)) < 0) {
+		printf("open history file failed\n");
+	}
+	struct Stat st;
+	stat(".mosh_history", &st);
+	seek(fd, st.st_size);
+	write(fd, cmd, strlen(cmd));
+	write(fd, "\n", 1);
+	close(fd);
+	return;
+}
+
+void print_history() {
+	int fd;
+	if ((fd = open(".mosh_history", O_RDONLY)) < 0) {
+		printf("open history file failed\n");
+	}
+	char ch;
+	while (read(fd, &ch, 1)) {
+		printf("%c", ch);
+	}
+	close(fd);
+	return;
+}
+```
 
 ## 七.实现一行多指令
 
