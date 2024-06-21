@@ -73,32 +73,94 @@ int _gettoken(char *s, char **p1, char **p2) {
 
 ​	**这里需要注意的是，需要新建用于传递返回值的系统调用和新的返回值字段，否则会与文件系统的ipc发生冲突。**
 
-```c
-// libos.c
-void libmain(int argc, char **argv) {
-	// set env to point at our env structure in envs[].
-	env = &envs[ENVX(syscall_getenvid())];
+* 为```env```结构体添加用于接受返回值的成员```return_value```和是否处于接受返回值的状态量```waiting_return_value```
 
-	// call user main routine
-	u_int r = main(argc, argv); 
-	syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
-	// exit gracefully
-	exit();
-}
-// debugf.c
-void _user_panic(const char *file, int line, const char *fmt, ...) {
-	debugf("panic at %s:%d: ", file, line);
-	va_list ap;
-	va_start(ap, fmt);
-	vdebugf(fmt, ap);
-	va_end(ap);
-	syscall_ipc_try_send(env->env_parent_id, -1, 0, 0);
-	debugf("\n");
-	exit();
-}
-```
+  ```c
+  struct Env {
+  	//...
+  	// Shell Challenge
+  	u_int waiting_return_value;
+  	u_int return_value;
+  	
+  };
+  ```
 
-* ```child```进程使用```ipc_recv```接收返回值，**这里需要注意的是，使用syscall_ipc_recv后，并不需要再进行wait，因为接收到返回值已经说明子进程执行完毕。**
+* 仿照```ipc```完成进行返回值传递和接受的系统调用
+
+  * ```sys_send_return_value```：发送返回值
+  * ```sys_recv_return_value```：接受返回值
+
+  ```c
+  int sys_send_return_value(u_int envid, u_int value, u_int srcva, u_int perm) {
+  	struct Env *e;
+  	struct Page *p;
+  	if (srcva != 0 && is_illegal_va(srcva)) {
+  		return -E_INVAL;
+  	}
+  	try(envid2env(envid,&e,0));
+  	if (e->waiting_return_value != 1) {
+  		return -E_IPC_NOT_RECV;
+  	}
+  	e->env_ipc_value = value;
+  	e->env_ipc_from = curenv->env_id;
+  	e->env_ipc_perm = PTE_V | perm;
+  	e->env_ipc_recving = 0;
+  	e->waiting_return_value = 0;
+  	e->return_value = value;
+  	e->env_status = ENV_RUNNABLE;
+  	TAILQ_INSERT_TAIL(&env_sched_list,e,env_sched_link);
+  	if (srcva != 0) {
+  		p = page_lookup(curenv->env_pgdir,srcva,NULL);
+  		if (!p) {
+  			return -E_INVAL;
+  		}
+  		try(page_insert(e->env_pgdir,e->env_asid,p,e->env_ipc_dstva,perm));
+  	}
+  	return 0;
+  }
+  
+  int sys_recv_return_value() {
+  	curenv->waiting_return_value = 1;
+  	curenv->env_status = ENV_NOT_RUNNABLE;
+  	TAILQ_REMOVE(&env_sched_list,curenv,env_sched_link);
+  	((struct Trapframe *)KSTACKTOP - 1)->regs[2] = 0;
+  	schedule(1);
+  }
+  
+  
+  ```
+
+* 传递返回值
+
+  ```c
+  // libos.c
+  void libmain(int argc, char **argv) {
+  	// set env to point at our env structure in envs[].
+  	env = &envs[ENVX(syscall_getenvid())];
+  
+  	// call user main routine
+  	u_int r = main(argc, argv);
+  	//syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+  	syscall_send_return_value(env->env_parent_id, r, 0, 0);
+  	syscall_set_job_done(env->env_id);
+  	// exit gracefully
+  	exit();
+  }
+  
+  // debugf.c
+  void _user_panic(const char *file, int line, const char *fmt, ...) {
+  	debugf("panic at %s:%d: ", file, line);
+  	va_list ap;
+  	va_start(ap, fmt);
+  	vdebugf(fmt, ap);
+  	va_end(ap);
+  	syscall_send_return_value(env->env_parent_id, -1, 0, 0);
+  	debugf("\n");
+  	exit();
+  }
+  ```
+
+* ```child```进程使用```ipc_recv```接收返回值，**这里需要注意的是，使用syscall_recv_return_value后，并不需要再进行wait，因为接收到返回值已经说明子进程执行完毕。**
 * 另外需要注意的是，当我们遇到```&& ||```时```child```需要向```parent```进行通信，其他时候不需要，我们可以设置一个标志```flag```进行区分。
 
 ```c
@@ -107,15 +169,17 @@ void runcmd(char *s) {
 	int child = spawn(argv[0], argv); // spawn a new process to run the command
 	// if succeeds, child is the envid of the new process.
 	// if fails, child is the error code. 
-	close_all(); // close all file descriptors
 	if (child >= 0) {
-		syscall_ipc_recv(0);
 		if (flag == 1) {
-			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
+			syscall_recv_return_value();
+			syscall_send_return_value(env->env_parent_id, env->return_value, 0, 0);
+		} else if (job_flag == 1) { // 需要创建后台任务 
+			syscall_create_job(child, cmd);
+			syscall_recv_return_value();
+		} else {
+			syscall_recv_return_value();
 		}
-	} else {
-		debugf("spawn %s: %d\n", argv[0], child);
-	}
+	} 
 	//...
 }
 ```
@@ -133,13 +197,6 @@ void runcmd(char *s) {
 int parsecmd(char **argv, int *rightpipe, int mark) {
 	int argc = 0;
 	while (1) {
-		char *t;
-		int fd, r;
-		int c = gettoken(0, &t);
-		flag = 0;
-		switch (c) {
-		case 0:
-			return mark ? argc : 0;
 		//...
 		case 'a':; // &&
 			flag = 1;
@@ -147,8 +204,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			if (child2 == 0) { // child shell
 				return mark ? argc : 0;
 			} else { // parent shell
-				syscall_ipc_recv(0);
-				if (env->env_ipc_value == 0) {
+				syscall_recv_return_value();
+				if (env->return_value == 0) {
 					return parsecmd(argv, rightpipe, 1);
 				} else {
 					return parsecmd(argv, rightpipe, 0);
@@ -161,8 +218,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			if (child3 == 0) {
 				return mark ? argc : 0;
 			} else {
-				syscall_ipc_recv(0);
-				if (env->env_ipc_value != 0) {
+				syscall_recv_return_value();
+				if (env->return_value != 0) {
 					return parsecmd(argv, rightpipe, 1);
 				} else {
 					return parsecmd(argv, rightpipe, 0);
@@ -179,7 +236,7 @@ void runcmd(char *s) {
 	//...
 	if (argc == 0) {
 		if (argv[0]) { // 后边还有指令
-			syscall_ipc_try_send(env->env_parent_id, 0, 0, 0);
+			syscall_send_return_value(env->env_parent_id, 0, 0, 0);
 		}
 		return;
 	}
@@ -187,6 +244,29 @@ void runcmd(char *s) {
 	//...
 }
 ```
+
+* **这里有一个很奇怪的点，可能和我的设计有关，我必须将close_all移动到后面，否则不能即使recv返回值，导致返回值丢失进入死锁**
+
+  ```c
+  	int child = spawn(argv[0], argv); // spawn a new process to run the command
+  	if (child >= 0) {
+  		if (flag == 1) {
+  			syscall_recv_return_value();
+  			syscall_send_return_value(env->env_parent_id, env->return_value, 0, 0);
+  		} else if (job_flag == 1) { // 需要创建后台任务 
+  			syscall_create_job(child, cmd);
+  			syscall_recv_return_value();
+  		} else {
+  			syscall_recv_return_value();
+  		}
+  	} else {
+  		debugf("spawn %s: %d\n", argv[0], child);
+  	}
+  	if (rightpipe) {
+  		wait(rightpipe);
+  	}
+  	close_all(); // close all file descriptors !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ```
 
 ## 三.实现更多指令
 
@@ -706,21 +786,20 @@ struct Job jobs[32];
 int jobCnt = 0;
 ```
 
-​	**重点在于何时将进程放入后台：**我们设置一个全局变量```job_flag```读到```&```时置为1,在```runcmd```时，对这个标记进行特判，从而将进程放到后台，**这里需要注意的是，```syscall_ipc_recv```应当在```syscall_create_job```之后，否则会一直阻塞，不能加入到后台，直到进程运行完毕才能加入到后台。**
+​	**重点在于何时将进程放入后台：**我们设置一个全局变量```job_flag```读到```&```时置为1,在```runcmd```时，对这个标记进行特判，从而将进程放到后台，**这里需要注意的是，```recv```应当在```syscall_create_job```之后，否则会一直阻塞，不能加入到后台，直到进程运行完毕才能加入到后台。**
 
 ```c
 	if (child >= 0) {
 		if (flag == 1) {
-			syscall_ipc_recv(0);
-			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
-		}
-		if (job_flag == 1) { // 需要创建后台任务 
+			syscall_recv_return_value();
+			syscall_send_return_value(env->env_parent_id, env->return_value, 0, 0);
+		} else if (job_flag == 1) { // 需要创建后台任务 
 			syscall_create_job(child, cmd);
+			syscall_recv_return_value();
+		} else {
+			syscall_recv_return_value();
 		}
-		syscall_ipc_recv(0);
-	} else {
-		debugf("spawn %s: %d\n", argv[0], child);
-	}
+	} 
 ```
 
 ​	这里创建后台任务也是通过系统调用实现，实际上是对内核态```jobs```数组赋值的操作，这样就实现了加入后台任务。
@@ -763,12 +842,7 @@ void env_print_jobs() {
 ```c
 // libos.c
 void libmain(int argc, char **argv) {
-	// set env to point at our env structure in envs[].
-	env = &envs[ENVX(syscall_getenvid())];
-
-	// call user main routine
-	u_int r = main(argc, argv);
-	syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+	//...
 	syscall_set_job_done(env->env_id);
 	// exit gracefully
 	exit();
@@ -800,39 +874,39 @@ void env_set_job_done(u_int envid) {
   }
   ```
 
-* ```fg```命令同样通过系统调用实现，从后台```jobs```中删除```jobid```代表的工作，并运行该进程
+* ```fg```命令同样通过系统调用实现，**并不需要从后台```jobs```中删除```jobid```的目录项**，只需到前台运行该进程，或者说当前运行进程wait这个后台进程。
 
+  * 说个题外话，我是没想到不用从jobs列表中删除该项的，因为linux中的行为是进行删除，而课程组的建议是仿照linux行为实现，并且挑战性任务说明书一坨，MOS居然有了这么离谱的举动，居然也不在挑战性任务中说明或给出样例，等大家猜吗...
+  
   ```c
   //sh.c
   void execute_fg(int jobId) {
-  	syscall_fg_job(jobId);
+  	int envid = syscall_fg_job(jobId);
+  	if (envid == -1) {
+  		printf("fg: job (%d) do not exist\n", jobId);
+  	}  else if (envs[ENVX(envid)].env_status != ENV_RUNNABLE) {
+  		printf("fg: (0x%08x) not running\n", envid);
+  	} else {
+  		wait(envid);
+  	}
   }
   
   //env.c
-  void env_fg_job(int jobId) {
+  int env_fg_job(int jobId) {
   	for (int i = 0; i < jobCnt; i++) {
   		if (jobs[i].job_id == jobId) {
-  			struct Env *e;
-  			envid2env(jobs[i].envid, &e, 0);
-  			if (jobs[i].job_status == 1) { // running
-  				env_run(e);
-  				for (int j = i; j < jobCnt - 1; j++) {
-  					jobs[j] = jobs[j+1];
-  				}
-  				jobCnt--;
-  			} else {
-  				printk("fg: (0x%08x) not running\n\r", jobId);
-  			}
-  			return;
+  			return jobs[i].envid;
   		}
   	}
-  	printk("fg: job (%d) do not exist\n\r", jobId);
+  	return -1;
   }
   ```
 
-### 10.4 ```kill```指令
+### 10.4 实现```kill```指令
 
 * ```kill```命令同样通过系统调用实现，杀死后台进程
+
+* 同样不需要从Jobs列表中删除...
 
   ```c
   // sh.c
@@ -844,25 +918,21 @@ void env_set_job_done(u_int envid) {
   void env_kill_job(int jobId) {
   	for (int i = 0; i < jobCnt; i++) {
   		if (jobs[i].job_id == jobId) {
-  			struct Env *e;
-  			envid2env(jobs[i].envid, &e, 0);
-  			if (jobs[i].job_status == 1) { // running 
-  				env_destroy(e);
-  				jobs[i].job_status = 0;
-  				for (int j = i; j < jobCnt - 1; j++) {
-  					jobs[j] = jobs[j+1];
-  				}
-  				jobCnt--;
+  			if (envs[ENVX(jobs[i].envid)].env_status != ENV_RUNNABLE) {
+  				printk("fg: (0x%08x) not running\n", jobs[i].envid);
+  				return;
   			} else {
-  				printk("fg: (0x%08x) not running\n\r", jobId);
+  				env_destroy(&envs[ENVX(jobs[i].envid)]);
+  				jobs[i].job_status = 0;
+  				return;
   			}
-  			return;
   		}
   	}
-  	printk("fg: job (%d) do not exist\n\r", jobId);
+  	printk("fg: job (%d) do not exist\n", jobId);
+  	return;
   }
   ```
-
+  
   
 
 
