@@ -44,7 +44,8 @@ struct Env {
 
 struct Job {
 	int job_id;
-	int job_status; // 0 for Done; 1 for Running 
+	int job_status; // 0 for Running; 1 for Done 
+	int job_killed;
 	int envid;
 	char cmd[1024];
 };

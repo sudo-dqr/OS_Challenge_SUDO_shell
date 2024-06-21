@@ -383,7 +383,7 @@ struct Env *env_create(const void *binary, size_t size, int priority) {
 
 void env_create_job(u_int envid, char * cmd) {
 	jobs[jobCnt].envid = envid;
-	jobs[jobCnt].job_status = 1; // Running
+	jobs[jobCnt].job_status = 0; // Running
 	strcpy(jobs[jobCnt].cmd, cmd);
 	jobs[jobCnt].job_id = jobCnt + 1;
 	jobCnt++;
@@ -393,6 +393,9 @@ void env_create_job(u_int envid, char * cmd) {
 
 void env_print_jobs() {
 	for (int i = 0; i < jobCnt; i++) {
+		if (jobs[i].job_killed) {
+			continue;
+		}
 		if (jobs[i].job_status == 1) {
 			printk("[%d] %-10s 0x%08x %s\n\r", jobs[i].job_id, "Running", jobs[i].envid, jobs[i].cmd);
 		} else {
@@ -405,17 +408,17 @@ void env_print_jobs() {
 void env_set_job_done(u_int envid) {
 	for (int i = 0; i < jobCnt; i++) {
 		if (jobs[i].envid == envid) {
-			jobs[i].job_status = 0;
+			jobs[i].job_status = 1;
 			break;
 		}
 	}
 }
 
 int env_fg_job(int jobId) {
-	if (jobs[jobId - 1].envid == 0 || jobId > 16 || jobs[jobId - 1].job_status == 0) {
+	if (jobs[jobId - 1].envid == 0 || jobId > 16 || jobs[jobId - 1].job_killed == 1) {
 		printk("fg: job (%d) do not exist\n\r", jobId);
 	}
-	if (jobs[jobId - 1].job_status == 0) {
+	if (jobs[jobId - 1].job_status == 1) {
 		printk("fg: (0x%08x) not running\n", jobs[jobId - 1].envid);
 	}
 
@@ -423,24 +426,14 @@ int env_fg_job(int jobId) {
 }
 
 void env_kill_job(int jobId) {
-	for (int i = 0; i < jobCnt; i++) {
-		if (jobs[i].job_id == jobId) {
-			struct Env *e;
-			envid2env(jobs[i].envid, &e, 0);
-			if (jobs[i].job_status == 1) { // running 
-				env_destroy(e);
-				jobs[i].job_status = 0;
-				for (int j = i; j < jobCnt - 1; j++) {
-					jobs[j] = jobs[j+1];
-				}
-				jobCnt--;
-			} else {
-				printk("fg: (0x%08x) not running\n\r", jobId);
-			}
-			return;
-		}
+	if (jobs[jobId - 1].envid == 0 || jobId > 16 || jobs[jobId - 1].job_killed == 1) {
+		printk("fg: job (%d) do not exist\n\r", jobId);
 	}
-	printk("fg: job (%d) do not exist\n\r", jobId);
+	if (jobs[jobId - 1].job_status == 1) {
+		printk("fg: (0x%08x) not running\n", jobs[jobId - 1].envid);
+	}
+	jobs[jobId - 1].job_killed = 1;
+	env_destroy(&envs[ENVX(jobs[jobId - 1].envid)]);
 }
 
 /* Overview:
