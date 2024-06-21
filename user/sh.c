@@ -110,7 +110,8 @@ void execute_jobs() {
 }
 
 void execute_fg(int jobId) {
-	syscall_fg_job(jobId);
+	int envid = syscall_fg_job(jobId);
+	wait(envid);
 }
 
 void execute_kill(int jobId) {

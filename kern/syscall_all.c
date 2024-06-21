@@ -99,9 +99,8 @@ void sys_set_job_done(u_int envid) {
 	return;
 }
 
-void sys_fg_job(u_int envid) {
-	env_fg_job(envid);
-	return;
+int sys_fg_job(u_int envid) {
+	return env_fg_job(envid);
 }
 
 void sys_kill_job(u_int envid) {

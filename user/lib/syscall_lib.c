@@ -87,7 +87,7 @@ void syscall_set_job_done(u_int envid) {
 	return msyscall(SYS_set_job_done, envid);
 }
 
-void syscall_fg_job(int jobId) {
+int syscall_fg_job(int jobId) {
 	return msyscall(SYS_fg_job, jobId);
 }
 
