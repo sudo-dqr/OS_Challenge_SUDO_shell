@@ -39,6 +39,10 @@ struct Env {
 
 	// Lab 6 scheduler counts
 	u_int env_runs; // number of times we've been env_run'ed
+
+	// Shell Challenge
+	u_int waiting_return_value;
+	u_int return_value;
 	
 };
 

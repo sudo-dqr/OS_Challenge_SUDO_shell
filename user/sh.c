@@ -270,8 +270,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			if (child2 == 0) { // child shell
 				return mark ? argc : 0;
 			} else { // parent shell
-				syscall_ipc_recv(0);
-				if (env->env_ipc_value == 0) {
+				syscall_recv_return_value();
+				if (env->return_value == 0) {
 					return parsecmd(argv, rightpipe, 1);
 				} else {
 					return parsecmd(argv, rightpipe, 0);
@@ -284,8 +284,8 @@ int parsecmd(char **argv, int *rightpipe, int mark) {
 			if (child3 == 0) {
 				return mark ? argc : 0;
 			} else {
-				syscall_ipc_recv(0);
-				if (env->env_ipc_value != 0) {
+				syscall_recv_return_value();
+				if (env->return_value != 0) {
 					return parsecmd(argv, rightpipe, 1);
 				} else {
 					return parsecmd(argv, rightpipe, 0);
@@ -338,7 +338,7 @@ void runcmd(char *s) {
 	int argc = parsecmd(argv, &rightpipe, 1);
 	if (argc == 0) {
 		if (argv[0]) { // 后边还有指令
-			syscall_ipc_try_send(env->env_parent_id, 0, 0, 0);
+			syscall_send_return_value(env->env_parent_id, 0, 0, 0);
 		}
 		return;
 	}
@@ -365,22 +365,23 @@ void runcmd(char *s) {
 	int child = spawn(argv[0], argv); // spawn a new process to run the command
 	// if succeeds, child is the envid of the new process.
 	// if fails, child is the error code. 
-	close_all(); // close all file descriptors
 	if (child >= 0) {
 		if (flag == 1) {
-			syscall_ipc_recv(0);
-			syscall_ipc_try_send(env->env_parent_id, env->env_ipc_value, 0, 1);
-		}
-		if (job_flag == 1) { // 需要创建后台任务 
+			syscall_recv_return_value();
+			syscall_send_return_value(env->env_parent_id, env->return_value, 0, 0);
+		} else if (job_flag == 1) { // 需要创建后台任务 
 			syscall_create_job(child, cmd);
+			syscall_recv_return_value();
+		} else {
+			syscall_recv_return_value();
 		}
-		syscall_ipc_recv(0);
 	} else {
 		debugf("spawn %s: %d\n", argv[0], child);
 	}
 	if (rightpipe) {
 		wait(rightpipe);
 	}
+	close_all(); // close all file descriptors
 	exit();
 }
 

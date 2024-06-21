@@ -27,6 +27,8 @@ enum {
 	SYS_set_job_done,
 	SYS_fg_job,
 	SYS_kill_job,
+	SYS_send_return_value,
+	SYS_recv_return_value,
 	MAX_SYSNO,
 };
 

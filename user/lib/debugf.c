@@ -54,7 +54,7 @@ void _user_panic(const char *file, int line, const char *fmt, ...) {
 	va_start(ap, fmt);
 	vdebugf(fmt, ap);
 	va_end(ap);
-	syscall_ipc_try_send(env->env_parent_id, -1, 0, 0);
+	syscall_send_return_value(env->env_parent_id, -1, 0, 0);
 	debugf("\n");
 	exit();
 }

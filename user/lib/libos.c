@@ -21,7 +21,8 @@ void libmain(int argc, char **argv) {
 
 	// call user main routine
 	u_int r = main(argc, argv);
-	syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+	//syscall_ipc_try_send(env->env_parent_id, r, 0, 0);
+	syscall_send_return_value(env->env_parent_id, r, 0, 0);
 	syscall_set_job_done(env->env_id);
 	// exit gracefully
 	exit();

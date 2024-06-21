@@ -71,6 +71,8 @@ int _gettoken(char *s, char **p1, char **p2) {
 
 ​	```grandson```的返回值在```libos.c/libmain```中接收，并返回给```child```，需要注意的是除了这里```debugf.c/user_panic```中也要进行通信，我选择返回-1表示指令错误执行。
 
+​	**这里需要注意的是，需要新建用于传递返回值的系统调用和新的返回值字段，否则会与文件系统的ipc发生冲突。**
+
 ```c
 // libos.c
 void libmain(int argc, char **argv) {

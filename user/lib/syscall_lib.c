@@ -57,10 +57,17 @@ int syscall_ipc_try_send(u_int envid, u_int value, const void *srcva, u_int perm
 	return msyscall(SYS_ipc_try_send, envid, value, srcva, perm);
 }
 
+int syscall_send_return_value(u_int envid, u_int value, const void *srcva, u_int perm) {
+	return msyscall(SYS_send_return_value, envid, value, srcva, perm);
+}
+
 int syscall_ipc_recv(void *dstva) {
 	return msyscall(SYS_ipc_recv, dstva);
 }
 
+int syscall_recv_return_value() {
+	return msyscall(SYS_recv_return_value);
+}
 int syscall_cgetc() {
 	return msyscall(SYS_cgetc);
 }
