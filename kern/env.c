@@ -433,7 +433,6 @@ void env_kill_job(int jobId) {
 		printk("fg: (0x%08x) not running\n", jobs[jobId - 1].envid);
 	}
 	jobs[jobId - 1].job_killed = 1;
-	env_destroy(&envs[ENVX(jobs[jobId - 1].envid)]);
 }
 
 /* Overview:
